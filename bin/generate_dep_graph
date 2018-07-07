@@ -1,0 +1,3 @@
+#!/bin/bash
+python sql_graphviz.py view_depend.csv > view_depend.dot 
+dot -Tsvg view_depend.dot  > view_depend.svg
