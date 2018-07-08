@@ -5,37 +5,19 @@ from graphviz import  Digraph
 import csv
 
 def field_label(tok):
-    return '''
-      <tr><td bgcolor="grey96" align="left" port="{0}">{0}</td></tr>\n'''.format(tok[0])
+    return """
+      <tr><td bgcolor='grey96' align='left' port='{0}'>{0}</td></tr>\n""".format(tok[0])
 
 
-def table_label(tok):
-    return '''
-    <table border="0" cellspacing="0" cellborder="1">
-      <tr><td bgcolor="lightblue2">
-        <font face="Times-bold" point-size="20">{tableName}</font></td></tr>
-        {fields}
-    </table>'''.format(**tok)
-
-
-def create_table_act(tok):
-    return '''
-"{tableName}" [
-shape=none
-  label=<'''.format(**tok) + table_label(tok) + '  >];'
-
-
-def add_dependency(tok):
-    return '  "{refTableName}" -> "{srcTableName}"'.format(**tok)
-
-
-def print_table(name, table):
+def table_label(name, table):
     fields = "".join([field_label([x]) for x in list(table)])
-    print(create_table_act({"tableName": name, "fields": fields}))
-
-
-def print_dep(dep):
-    print(add_dependency({"refTableName": dep[0], "srcTableName":dep[1]}))
+    tok = {"tableName": name, "fields": fields}
+    return """<
+    <table border='0' cellspacing='0' cellborder='1'>
+      <tr><td bgcolor='lightblue2'>
+        <font face='Times-bold' point-size='20'>{tableName}</font></td></tr>
+        {fields}
+    </table> >""".format(**tok)
 
 
 def walk_dep(node, depth, deps, depth_limit=None, active_tables=set(), active_deps=set()):
@@ -51,7 +33,29 @@ def walk_dep(node, depth, deps, depth_limit=None, active_tables=set(), active_de
     return (active_tables, active_deps)
 
 
-def render_dot(tables, deps, root=None, depth_limit=None):
+####
+# Using print
+def create_table_act(name, label):
+    return '''
+"%s" [
+shape=none
+  label=%s ];''' % (name, label)
+
+
+def add_dependency(tok):
+    return '  "{refTableName}" -> "{srcTableName}"'.format(**tok)
+
+
+def print_table(name, table):
+    label = table_label(name, table)
+    print(create_table_act(name, label))
+
+
+def print_dep(dep):
+    print(add_dependency({"refTableName": dep[0], "srcTableName":dep[1]}))
+
+
+def print_dot(tables, deps, root=None, depth_limit=None):
     # dot file header
     print("/*")
     print(" * Graphviz of '%s', created %s" % (filename, datetime.now()))
@@ -74,6 +78,34 @@ def render_dot(tables, deps, root=None, depth_limit=None):
     print("}")
 
 
+####
+# Use graphviz library
+def build_dot(tables, deps, root=None, depth_limit=None):
+    dot = Digraph(comment=filename + ' %s' % datetime.now())
+    dot.attr(rankdir='LR') #, size='8,5')
+    dot.attr('node', shape='none')
+    if root is None:
+        active_tables = tables.keys()
+        active_deps = deps
+    else:
+        active_tables, active_deps = walk_dep(root, 0, deps, depth_limit)
+
+    for table_name in active_tables:
+        table = tables[table_name]
+        label = table_label(table_name, table)
+        dot.node(table_name, label)
+
+    for dep in active_deps:
+        dot.edge(dep[0], dep[1])
+
+    return dot
+
+def render_dot(tables, deps, root=None, depth_limit=None, use_print=False):
+    if use_print:
+        return print_dot(tables, deps, root, depth_limit)
+    return build_dot(tables, deps, root, depth_limit)
+
+
 def build_dependency_from_csv(filename, source_table_col=0, source_column_col=1, depend_view_col=2):
     tables = dict()
     deps = set()
@@ -94,4 +126,6 @@ if __name__ == '__main__':
     root = sys.argv[2] if len(sys.argv) > 2 else None
     depth_limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
     tables, deps = build_dependency_from_csv(filename)
-    dot = render_dot(tables, deps, root, depth_limit)
+    dot = render_dot(tables, deps, root, depth_limit, True)
+    if dot:
+        print(dot.source)
