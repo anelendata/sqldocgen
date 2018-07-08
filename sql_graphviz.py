@@ -15,7 +15,8 @@ def table_label(name, table):
     return """<
     <table border='0' cellspacing='0' cellborder='1'>
       <tr><td bgcolor='lightblue2'>
-        <font face='Times-bold' point-size='20'>{tableName}</font></td></tr>
+        <font face='Times-bold' point-size='20'>{tableName}</font>
+      </td></tr>
         {fields}
     </table> >""".format(**tok)
 
@@ -80,7 +81,7 @@ def print_dot(tables, deps, root=None, depth_limit=None):
 
 ####
 # Use graphviz library
-def build_dot(tables, deps, root=None, depth_limit=None):
+def build_dot(tables, deps, root=None, depth_limit=None, link_ext="html"):
     dot = Digraph(comment=filename + ' %s' % datetime.now())
     dot.attr(rankdir='LR') #, size='8,5')
     dot.attr('node', shape='none')
@@ -93,7 +94,7 @@ def build_dot(tables, deps, root=None, depth_limit=None):
     for table_name in active_tables:
         table = tables[table_name]
         label = table_label(table_name, table)
-        dot.node(table_name, label)
+        dot.node(table_name, label, href="./" + table_name + "." + link_ext)
 
     for dep in active_deps:
         dot.edge(dep[0], dep[1])
@@ -104,6 +105,10 @@ def render_dot(tables, deps, root=None, depth_limit=None, use_print=False):
     if use_print:
         return print_dot(tables, deps, root, depth_limit)
     return build_dot(tables, deps, root, depth_limit)
+
+
+def output_graph(filename, dot):
+    dot.render(filename, directory="output/svg", cleanup=True)
 
 
 def build_dependency_from_csv(filename, source_table_col=0, source_column_col=1, depend_view_col=2):
@@ -126,6 +131,7 @@ if __name__ == '__main__':
     root = sys.argv[2] if len(sys.argv) > 2 else None
     depth_limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
     tables, deps = build_dependency_from_csv(filename)
-    dot = render_dot(tables, deps, root, depth_limit, True)
-    if dot:
-        print(dot.source)
+    dot = render_dot(tables, deps, root, depth_limit)
+    # print(dot.source)
+    dot.format = "svg"
+    output_graph(root, dot)
