@@ -1,33 +1,36 @@
 #!/usr/bin/env python
 
 from datetime import datetime
+from graphviz import  Digraph
 import csv
 
-def field_act(tok):
+def field_label(tok):
     return '''
-      <tr><td class="field_actor" bgcolor="grey96" align="left" port="{0}">{0}</td></tr>\n'''.format(tok[0])
-    # return '<tr><td bgcolor="grey96" align="left" port="{0}"><font face="Times-bold">{0}</font>  <font color="#535353">{1}</font></td></tr>'.format(tok[0], ' '.join(tok[1::]).replace('"', '\\"'))
+      <tr><td bgcolor="grey96" align="left" port="{0}">{0}</td></tr>\n'''.format(tok[0])
+
+
+def table_label(tok):
+    return '''
+    <table border="0" cellspacing="0" cellborder="1">
+      <tr><td bgcolor="lightblue2">
+        <font face="Times-bold" point-size="20">{tableName}</font></td></tr>
+        {fields}
+    </table>'''.format(**tok)
 
 
 def create_table_act(tok):
     return '''
 "{tableName}" [
 shape=none
-  label=<
-    <table class="table_actor" border="0" cellspacing="0" cellborder="1">
-      <tr><td class="table_name" font="Times-bold" point-size="20">{tableName}</td></tr>
-        {fields}
-    </table>
-  >];'''.format(**tok)
-  # table border="0" cellspacing="0" cellborder="1"
-  # table_name font="Times-bold" point-size="20"
+  label=<'''.format(**tok) + table_label(tok) + '  >];'
+
 
 def add_dependency(tok):
     return '  "{refTableName}" -> "{srcTableName}"'.format(**tok)
 
 
 def print_table(name, table):
-    fields = "".join([field_act([x]) for x in list(table)])
+    fields = "".join([field_label([x]) for x in list(table)])
     print(create_table_act({"tableName": name, "fields": fields}))
 
 
@@ -92,4 +95,3 @@ if __name__ == '__main__':
     depth_limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
     tables, deps = build_dependency_from_csv(filename)
     dot = render_dot(tables, deps, root, depth_limit)
-    print dot
