@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 from datetime import datetime
 from graphviz import  Digraph
 import csv
@@ -21,14 +19,24 @@ def table_label(name, table):
     </table> >""".format(**tok)
 
 
-def walk_dep(node, depth, deps, depth_limit=None, active_tables=set(), active_deps=set()):
+def walk_dep(node, depth, deps, depth_limit=None, active_tables=None, active_deps=None, reverse=False):
+    if active_tables is None:
+        active_tables = set()
+    if active_deps is None:
+        active_deps = set()
+
+    cur = 0
+    ref = 1
+    if reverse:
+        cur = 1
+        ref = 0
     active_tables.add(node)
     if depth_limit is not None and depth >= depth_limit:
         return(active_tables, active_deps)
     for dep in deps:
-        if dep[0] == node:
+        if dep[cur] == node:
             active_deps.add(dep)
-            t, d = walk_dep(dep[1], depth + 1, deps, depth_limit, active_tables, active_deps)
+            t, d = walk_dep(dep[ref], depth + 1, deps, depth_limit, active_tables, active_deps, reverse)
             active_tables.union(t)
             active_deps.union(d)
     return (active_tables, active_deps)
@@ -81,30 +89,35 @@ def print_dot(tables, deps, root=None, depth_limit=None):
 
 ####
 # Use graphviz library
-def build_dot(tables, deps, root=None, depth_limit=None, link_ext="html"):
+def build_dot(tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
     dot = Digraph(comment=filename + ' %s' % datetime.now())
     dot.attr(rankdir='LR') #, size='8,5')
     dot.attr('node', shape='none')
+
     if root is None:
         active_tables = tables.keys()
         active_deps = deps
     else:
         active_tables, active_deps = walk_dep(root, 0, deps, depth_limit)
+        if add_child:
+            t, d = walk_dep(root, 0, deps, depth_limit, reverse=True)
+            active_tables = list(set().union(active_tables, t))
+            active_deps = list(set().union(active_deps, d))
 
     for table_name in active_tables:
         table = tables[table_name]
         label = table_label(table_name, table)
-        dot.node(table_name, label, href="./" + table_name + "." + link_ext)
+        dot.node(table_name, label, href="/" + table_name + "." + link_ext)
 
     for dep in active_deps:
         dot.edge(dep[0], dep[1])
 
     return dot
 
-def render_dot(tables, deps, root=None, depth_limit=None, use_print=False):
+def render_dot(tables, deps, root=None, depth_limit=None, use_print=False, add_child=True):
     if use_print:
         return print_dot(tables, deps, root, depth_limit)
-    return build_dot(tables, deps, root, depth_limit)
+    return build_dot(tables, deps, root, depth_limit, add_child=add_child)
 
 
 def output_graph(filename, dot):
@@ -131,7 +144,14 @@ if __name__ == '__main__':
     root = sys.argv[2] if len(sys.argv) > 2 else None
     depth_limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
     tables, deps = build_dependency_from_csv(filename)
-    dot = render_dot(tables, deps, root, depth_limit)
-    # print(dot.source)
-    dot.format = "svg"
-    output_graph(root, dot)
+    if root:
+        dot = render_dot(tables, deps, root, depth_limit)
+        dot.format = "svg"
+        output_graph(root, dot)
+
+    else:
+        for table in tables.keys():
+            dot = render_dot(tables, deps, table, 1)
+            # print(dot.source)
+            dot.format = "svg"
+            output_graph(table, dot)
