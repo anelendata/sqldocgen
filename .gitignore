@@ -1,6 +1,7 @@
 *.csv
 input
 output
+book
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

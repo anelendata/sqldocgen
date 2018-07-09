@@ -124,24 +124,32 @@ def render_dot(schema, tables, deps, root=None, depth_limit=None, use_print=Fals
     return build_dot(schema, tables, deps, root, depth_limit, add_child=add_child)
 
 
-def output_graph(filename, dot):
-    dot.render(filename, directory="output/svg", cleanup=True)
+def output_graph(outdir, filename, dot):
+    dot.render(filename, directory=outdir, cleanup=True)
 
 
-def build_dependency_from_csv(filename, schema, source_table_col=0, source_column_col=1, depend_view_col=2):
+def build_dependency_from_csv(filename, schema,
+                              source_schema_col=0, source_table_col=1, source_column_col=2,
+                              depend_schema_col=3, depend_view_col=4):
     tables = dict()
     deps = set()
     with open(filename, "r") as csvfile:
         rows = csv.reader(csvfile, delimiter=',', quotechar='"')
         for row in rows:
-            if schema + "." not in row[depend_view_col]:
+            source_schema_table = row[source_schema_col] + "." + row[source_table_col]
+            depend_schema_view = row[depend_schema_col] + "." + row[depend_view_col]
+            source_column = row[source_column_col]
+
+            if schema != row[depend_schema_col]:
                 continue
-            if tables.get(row[source_table_col], None) is None:
-                tables[row[source_table_col]] = set()
-            tables[row[source_table_col]].add(row[source_column_col])
-            if tables.get(row[depend_view_col], None) is None:
-                tables[row[depend_view_col]] = set()
-            deps.add((row[depend_view_col], row[source_table_col]))
+
+            if tables.get(source_schema_table, None) is None:
+                tables[source_schema_table] = set()
+            tables[source_schema_table].add(source_column)
+
+            if tables.get(depend_schema_view, None) is None:
+                tables[depend_schema_view] = set()
+            deps.add((depend_schema_view, source_schema_table))
     return tables, deps
 
 if __name__ == '__main__':
@@ -156,12 +164,12 @@ if __name__ == '__main__':
             dot = render_dot(schema, tables, deps, table, 1)
             # print(dot.source)
             dot.format = "svg"
-            output_graph(table, dot)
+            output_graph("output/svg", table, dot)
     elif root_table != "":
         dot = render_dot(schema, tables, deps, root, depth_limit, add_child=False)
         dot.format = "svg"
-        output_graph(root, dot)
+        output_graph("output/svg", root, dot)
     else:
         dot = render_dot(schema, tables, deps, None, None, add_child=False)
         dot.format = "svg"
-        output_graph("all_tables", dot)
+        output_graph("output/svg", "all_tables", dot)
