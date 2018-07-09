@@ -16,9 +16,11 @@ def parse_sql_file(path, fname, schema=""):
     output = (["## %s.%s" % (schema, table),
                doc,
                "### Depencencies"] +
-              ["- [%s](%s.md)" % (ref, ref) for ref in refs] +
-              ["\n", '<object data="./svg/%s.%s.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></object>' % (schema, table)])
-
+              ["- [%s](%s.%s.md)" % (ref, schema, ref) for ref in refs] +
+              # ["\n", '<img src="./svg/%s.%s.svg" width="80%%"></img>' % (schema, table)])
+              ["\n", '<embed src="./svg/%s.%s.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>' % (schema, table),
+              # ["\n", '<object data="./svg/%s.%s.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></object>' % (schema, table)])
+               "### SQL source", "```mysql", dbt,  "```"])
     return "\n".join(output)
 
 

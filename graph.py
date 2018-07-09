@@ -89,7 +89,7 @@ def print_dot(tables, deps, root=None, depth_limit=None):
 
 ####
 # Use graphviz library
-def build_dot(tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
+def build_dot(schema, tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
     dot = Digraph(comment=filename + ' %s' % datetime.now())
     dot.attr(rankdir='LR') #, size='8,5')
     dot.attr('node', shape='none')
@@ -104,32 +104,38 @@ def build_dot(tables, deps, root=None, depth_limit=None, link_ext="html", add_ch
             active_tables = list(set().union(active_tables, t))
             active_deps = list(set().union(active_deps, d))
 
-    for table_name in active_tables:
-        table = tables[table_name]
-        label = table_label(table_name, table)
-        dot.node(table_name, label, href="/" + table_name + "." + link_ext)
+    for schema_table_name in active_tables:
+        table = tables[schema_table_name]
+        label = table_label(schema_table_name, table)
+        cur_schema, cur_table = schema_table_name.split(".")
+        if cur_schema == schema:
+            dot.node(schema_table_name, label, href="../" + schema_table_name + "." + link_ext, target="_parent")
+        else:
+            dot.node(schema_table_name, label)
 
     for dep in active_deps:
         dot.edge(dep[0], dep[1])
 
     return dot
 
-def render_dot(tables, deps, root=None, depth_limit=None, use_print=False, add_child=True):
+def render_dot(schema, tables, deps, root=None, depth_limit=None, use_print=False, add_child=True):
     if use_print:
         return print_dot(tables, deps, root, depth_limit)
-    return build_dot(tables, deps, root, depth_limit, add_child=add_child)
+    return build_dot(schema, tables, deps, root, depth_limit, add_child=add_child)
 
 
 def output_graph(filename, dot):
     dot.render(filename, directory="output/svg", cleanup=True)
 
 
-def build_dependency_from_csv(filename, source_table_col=0, source_column_col=1, depend_view_col=2):
+def build_dependency_from_csv(filename, schema, source_table_col=0, source_column_col=1, depend_view_col=2):
     tables = dict()
     deps = set()
     with open(filename, "r") as csvfile:
         rows = csv.reader(csvfile, delimiter=',', quotechar='"')
         for row in rows:
+            if schema + "." not in row[depend_view_col]:
+                continue
             if tables.get(row[source_table_col], None) is None:
                 tables[row[source_table_col]] = set()
             tables[row[source_table_col]].add(row[source_column_col])
@@ -142,16 +148,20 @@ if __name__ == '__main__':
     import sys
     filename = sys.stdin if len(sys.argv) == 1 else sys.argv[1]
     root = sys.argv[2] if len(sys.argv) > 2 else None
+    schema, root_table = root.split(".")
     depth_limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
-    tables, deps = build_dependency_from_csv(filename)
-    if root:
-        dot = render_dot(tables, deps, root, depth_limit)
-        dot.format = "svg"
-        output_graph(root, dot)
-
-    else:
+    tables, deps = build_dependency_from_csv(filename, schema)
+    if root_table == "*":
         for table in tables.keys():
-            dot = render_dot(tables, deps, table, 1)
+            dot = render_dot(schema, tables, deps, table, 1)
             # print(dot.source)
             dot.format = "svg"
             output_graph(table, dot)
+    elif root_table != "":
+        dot = render_dot(schema, tables, deps, root, depth_limit, add_child=False)
+        dot.format = "svg"
+        output_graph(root, dot)
+    else:
+        dot = render_dot(schema, tables, deps, None, None, add_child=False)
+        dot.format = "svg"
+        output_graph("all_tables", dot)
