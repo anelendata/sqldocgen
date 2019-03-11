@@ -11,7 +11,8 @@ def parse_sql_file(path, fname, schema="", all_columns={}):
         pos = dbt.find("/*")
         doc = dbt[pos + 2:dbt.find("*/")] if pos > -1 else ""
         pattern = re.compile(r"{{(ref)\('([a-z0-9_]*)'\)}}")
-        refs = refs.union(set(pattern.findall(dbt)))
+        for ref in pattern.findall(dbt):
+            refs.add(ref[1])
 
     schema_table = schema + "." + table
     columns = all_columns.get(schema_table, [])
