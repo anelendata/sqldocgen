@@ -1,6 +1,7 @@
+import csv, os
 from datetime import datetime
 from graphviz import  Digraph
-import csv
+
 
 def field_label(tok):
     return """
@@ -90,7 +91,7 @@ def print_dot(tables, deps, root=None, depth_limit=None):
 ####
 # Use graphviz library
 def build_dot(schema, tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
-    dot = Digraph(comment=filename + ' %s' % datetime.now())
+    dot = Digraph(comment=schema + ' %s' % datetime.now())
     dot.attr(rankdir='LR') #, size='8,5')
     dot.attr('node', shape='none')
 
@@ -105,6 +106,7 @@ def build_dot(schema, tables, deps, root=None, depth_limit=None, link_ext="html"
             active_deps = list(set().union(active_deps, d))
 
     for schema_table_name in active_tables:
+        print(schema_table_name)
         table = tables[schema_table_name]
         label = table_label(schema_table_name, table)
         cur_schema, cur_table = schema_table_name.split(".")
@@ -128,37 +130,39 @@ def output_graph(outdir, filename, dot):
     dot.render(filename, directory=outdir, cleanup=True)
 
 
-def build_dependency_from_csv(filename, schema,
-                              source_schema_col=0, source_table_col=1, source_column_col=2,
-                              depend_schema_col=3, depend_view_col=4):
-    tables = dict()
+def build_dependency_from_csv(path, schema, filename="_dependency.csv"):
+    source_schema_col = 0
+    source_table_col = 1
+    depend_schema_col = 2
+    depend_view_col = 3
     deps = set()
-    with open(filename, "r") as csvfile:
+    with open(os.path.join(path, filename), "r") as csvfile:
         rows = csv.reader(csvfile, delimiter=',', quotechar='"')
         for row in rows:
             source_schema_table = row[source_schema_col] + "." + row[source_table_col]
             depend_schema_view = row[depend_schema_col] + "." + row[depend_view_col]
-            source_column = row[source_column_col]
 
             if schema != row[depend_schema_col]:
                 continue
 
-            if tables.get(source_schema_table, None) is None:
-                tables[source_schema_table] = set()
-            tables[source_schema_table].add(source_column)
-
-            if tables.get(depend_schema_view, None) is None:
-                tables[depend_schema_view] = set()
             deps.add((depend_schema_view, source_schema_table))
-    return tables, deps
+    return deps
+
 
 if __name__ == '__main__':
     import sys
-    filename = sys.stdin if len(sys.argv) == 1 else sys.argv[1]
-    root = sys.argv[2] if len(sys.argv) > 2 else None
+    import doc
+    if len(sys.argv) < 2:
+        print("graph <dbt_dir> <work_dir> <all_column_file.csv> <root_schema_table> <depth_limit>")
+    dbt_dir = sys.argv[1] if len(sys.argv) > 1 else "."
+    work_dir = sys.argv[2] if len(sys.argv) > 2 else "."
+    all_column_file = sys.argv[3] if len(sys.argv) > 3 else None
+    root = sys.argv[4] if len(sys.argv) > 4 else None
     schema, root_table = root.split(".")
-    depth_limit = int(sys.argv[3]) if len(sys.argv) > 3 else None
-    tables, deps = build_dependency_from_csv(filename, schema)
+    depth_limit = int(sys.argv[5]) if len(sys.argv) > 5 else None
+
+    deps = build_dependency_from_csv(work_dir, schema)
+    tables = doc.read_columns_from_csv(os.path.join(dbt_dir, "models"), all_column_file)
     if root_table == "*":
         for table in tables.keys():
             dot = render_dot(schema, tables, deps, table, 1)

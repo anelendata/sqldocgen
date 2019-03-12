@@ -1,3 +1,9 @@
-#!/bin/bash
-python sql_graphviz.py view_depend.csv > view_depend.dot 
-dot -Tsvg view_depend.dot  > view_depend.svg
+#!/bin/bash 
+echo "View dependency CSV file: $1"
+echo "Output dot file: $2"
+echo "Output svg file: $2.svg"
+echo "Root schema.table $3"
+python graph.py $1 > $2
+# python graph.py view_depend.csv > view_depend.dot 
+dot -Tsvg $2  > $2.svg
+# dot -Tsvg view_depend.dot  > view_depend.svg
