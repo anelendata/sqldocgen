@@ -54,7 +54,7 @@ def parse_sql_file(path, fname, schema="", all_columns={}):
     return (doc, sql, schema, table, columns, refs)
 
 
-def write_doc(dirname, outdir, schema, all_columns):
+def write_doc(dirname, outdir, schema, all_columns, image_format="svg"):
     model_dir = os.walk(dirname)
     toc = []
     dep_list = []
@@ -63,7 +63,7 @@ def write_doc(dirname, outdir, schema, all_columns):
             tname = fname[0:-4]
             with open(os.path.join(outdir, schema + "." + tname + ".md"), "w") as f:
                 d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
-                output = get_markdown(d, sql, s, t, c, r)
+                output = get_markdown(d, sql, s, t, c, r, image_format)
                 f.write(output)
                 toc = toc + ["* [%s.%s](%s.%s.md)" % (schema, tname, schema, tname)]
                 dep_list = build_dep(dep_list, s, t, r)
