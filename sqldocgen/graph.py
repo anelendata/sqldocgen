@@ -106,8 +106,7 @@ def build_dot(schema, tables, deps, root=None, depth_limit=None, link_ext="html"
             active_deps = list(set().union(active_deps, d))
 
     for schema_table_name in active_tables:
-        print(schema_table_name)
-        table = tables[schema_table_name]
+        table = tables[schema_table_name] if schema_table_name in tables.keys() else {}
         label = table_label(schema_table_name, table)
         cur_schema, cur_table = schema_table_name.split(".")
         if cur_schema == schema:
@@ -161,19 +160,22 @@ if __name__ == '__main__':
     schema, root_table = root.split(".")
     depth_limit = int(sys.argv[5]) if len(sys.argv) > 5 else None
 
+    image_format = "png"
+    # image_format = "svg"
+
     deps = build_dependency_from_csv(work_dir, schema)
     tables = doc.read_columns_from_csv(os.path.join(dbt_dir, "models"), all_column_file)
     if root_table == "*":
         for table in tables.keys():
             dot = render_dot(schema, tables, deps, table, 1)
             # print(dot.source)
-            dot.format = "svg"
-            output_graph("output/svg", table, dot)
+            dot.format = image_format
+            output_graph("output/" + image_format, table, dot)
     elif root_table != "":
         dot = render_dot(schema, tables, deps, root, depth_limit, add_child=False)
-        dot.format = "svg"
-        output_graph("output/svg", root, dot)
+        dot.format = image_format
+        output_graph("output/" + image_format, root, dot)
     else:
         dot = render_dot(schema, tables, deps, None, None, add_child=False)
-        dot.format = "svg"
-        output_graph("output/svg", "all_tables", dot)
+        dot.format = image_format
+        output_graph("output/" + image_format, "all_tables", dot)

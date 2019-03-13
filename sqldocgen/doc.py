@@ -15,10 +15,15 @@ def build_dep(dep_list, dep_schema, dep_view, refs):
     return dep_list
 
 
-def get_markdown(doc, sql, schema, table, columns, refs):
+def get_markdown(doc, sql, schema, table, columns, refs, image_format="png"):
+    if image_format == "svg":
+        image_embed = '<embed src="./svg/%s.%s.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>' % (schema, table)
+    else:
+        image_embed = '<img src="./%s/%s.%s.%s" width="80%%"/>' % (image_format, schema, table, image_format)
+
     output = (["## %s.%s" % (schema, table),
                doc] +
-              ['\n<embed src="./svg/%s.%s.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>' % (schema, table)] +
+              ['\n' + image_embed] +
               ["\n### Columns"] +
               ["- %s" % col for col in columns] +
               ["\n### Depencencies"] +
