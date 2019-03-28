@@ -79,7 +79,8 @@ def write_doc(dirname, outdir, schema, all_columns, image_format="svg"):
     toc.sort()
 
     with open(os.path.join(outdir, "README.md"), "w") as f:
-        f.write("# Introduction\n")
+        f.write("# %s\n" % schema)
+        f.write('<embed src="./svg/all_tables.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>\n')
         f.write("\n".join(toc))
 
 

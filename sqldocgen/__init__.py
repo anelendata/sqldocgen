@@ -67,7 +67,7 @@ def main():
         graph.output_graph(os.path.join(out_dir, image_format), table, dot)
         graph.output_source(os.path.join(out_dir, "dot"), table, dot.source)
 
-    if root_table != "*" and root_table != "":
+    if root_table != "*":
         dot = graph.render_dot(schema, tables, deps, root, depth_limit, add_child=False)
         dot.format = image_format
         graph.output_graph(os.path.join(out_dir, image_format), root, dot)

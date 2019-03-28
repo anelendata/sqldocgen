@@ -81,8 +81,9 @@ node [shape=none]
             active_deps = list(set().union(active_deps, d))
 
     for schema_table_name in active_tables:
+        table_name = schema_table_name.split(".")[-1]
         table = tables[schema_table_name] if schema_table_name in tables.keys() else {}
-        label = table_label(schema_table_name, table, style=True)
+        label = table_label(table_name, table, style=True)
         cur_schema, cur_table = schema_table_name.split(".")
 
         if cur_schema == schema:
@@ -115,8 +116,9 @@ def build_with_graphviz(schema, tables, deps, root=None, depth_limit=None, link_
             active_deps = list(set().union(active_deps, d))
 
     for schema_table_name in active_tables:
+        table_name = schema_table_name.split(".")[-1]
         table = tables[schema_table_name] if schema_table_name in tables.keys() else {}
-        label = table_label(schema_table_name, table, style=True)
+        label = table_label(table_name, table, style=True)
         cur_schema, cur_table = schema_table_name.split(".")
         if cur_schema == schema:
             dot.node(schema_table_name, label, href="../" + schema_table_name + "." + link_ext, target="_parent")
