@@ -3,25 +3,31 @@ from datetime import datetime
 from graphviz import  Digraph
 
 
-def field_label(tok):
-    return """
-      <tr><td bgcolor='grey96' align='left' port='{0}'>{0}</td></tr>\n""".format(tok[0])
+def field_label(tok, style=False):
+    label = "<tr><td "
+    if style:
+        label = label + "bgcolor='#CCCCCC' align='left' "
+    label = label + "port='{0}'>{0}</td></tr>\n".format(tok[0])
+    return label
 
 
-def table_label(name, table):
+def table_label(name, table, style=False):
     col_list = list(table)
     if len(col_list) > 20:
         col_list = col_list[0:19] + ["..."]
-    fields = "".join([field_label([x]) for x in col_list])
-    tok = {"tableName": name, "fields": fields}
-    return """<
-    <table border='0' cellspacing='0' cellborder='1'>
-      <tr><td bgcolor='lightblue2'>
-        <font face='Times-bold' point-size='20'>{tableName}</font>
-      </td></tr>
+    fields = "".join([field_label([x], style=style) for x in col_list])
+    tok = {"tableName": name, "fields": fields,
+            "table_style": "", "td_style":  "", "font": "", "font_close": ""}
+    if style:
+        tok["table_style"] = "border='0' cellspacing='0' cellborder='1'"
+        tok["td_style"] = "bgcolor='#CCCCCC'"
+        tok["font"] = "<font face='Times-bold' point-size='20'>"
+        tok["font_close"] = "</font>"
+    label = """<
+    <table {table_style}><tr><td {td_style}>{font}{tableName}{font_close}</td></tr>
         {fields}
     </table> >""".format(**tok)
-
+    return label
 
 def walk_dep(node, depth, deps, depth_limit=None, active_tables=None, active_deps=None, reverse=False):
     if active_tables is None:
@@ -46,8 +52,6 @@ def walk_dep(node, depth, deps, depth_limit=None, active_tables=None, active_dep
     return (active_tables, active_deps)
 
 
-####
-# Using print
 def create_table_act(name, label):
     return '''
 "%s" [
@@ -59,41 +63,43 @@ def add_dependency(tok):
     return '  "{refTableName}" -> "{srcTableName}"'.format(**tok)
 
 
-def print_table(name, table):
-    label = table_label(name, table)
-    print(create_table_act(name, label))
-
-
-def print_dep(dep):
-    print(add_dependency({"refTableName": dep[0], "srcTableName":dep[1]}))
-
-
-def print_dot(tables, deps, root=None, depth_limit=None):
-    # dot file header
-    print("/*")
-    print(" * Graphviz of '%s', created %s" % (filename, datetime.now()))
-    print(" */")
-    print("digraph g { graph [ rankdir = \"LR\" ];")
+def build_without_graphviz(schema, tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
+    dot = """// %s %s
+digraph {
+rankdir =LR
+node [shape=none]
+""" % (schema, datetime.now())
 
     if root is None:
         active_tables = tables.keys()
         active_deps = deps
     else:
         active_tables, active_deps = walk_dep(root, 0, deps, depth_limit)
+        if add_child:
+            t, d = walk_dep(root, 0, deps, depth_limit, reverse=True)
+            active_tables = list(set().union(active_tables, t))
+            active_deps = list(set().union(active_deps, d))
 
-    for table_name in active_tables:
-        table = tables[table_name]
-        print_table(table_name, table)
+    for schema_table_name in active_tables:
+        table = tables[schema_table_name] if schema_table_name in tables.keys() else {}
+        label = table_label(schema_table_name, table, style=True)
+        cur_schema, cur_table = schema_table_name.split(".")
+
+        if cur_schema == schema:
+            dot = dot + create_table_act(schema_table_name, label,
+                    href="../" + schema_table_name + "." + link_ext, target="_parent")
+        else:
+            dot = dot + create_table_act(schema_table_name, label)
 
     for dep in active_deps:
-        print_dep(dep)
+        dot = dot + add_dependency({"refTableName": dep[0], "srcTableName":dep[1]})
 
-    print("}")
+    dot = dot + "}"
 
+    return dot
 
-####
-# Use graphviz library
-def build_dot(schema, tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
+def build_with_graphviz(schema, tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
+    """Build with graphviz library"""
     dot = Digraph(comment=schema + ' %s' % datetime.now())
     dot.attr(rankdir='LR') #, size='8,5')
     dot.attr('node', shape='none')
@@ -110,7 +116,7 @@ def build_dot(schema, tables, deps, root=None, depth_limit=None, link_ext="html"
 
     for schema_table_name in active_tables:
         table = tables[schema_table_name] if schema_table_name in tables.keys() else {}
-        label = table_label(schema_table_name, table)
+        label = table_label(schema_table_name, table, style=True)
         cur_schema, cur_table = schema_table_name.split(".")
         if cur_schema == schema:
             dot.node(schema_table_name, label, href="../" + schema_table_name + "." + link_ext, target="_parent")
@@ -122,21 +128,22 @@ def build_dot(schema, tables, deps, root=None, depth_limit=None, link_ext="html"
 
     return dot
 
-def render_dot(schema, tables, deps, root=None, depth_limit=None, use_print=False, add_child=True):
-    if use_print:
-        return print_dot(tables, deps, root, depth_limit)
-    return build_dot(schema, tables, deps, root, depth_limit, add_child=add_child)
+
+def render_dot(schema, tables, deps, root=None, depth_limit=None, has_graphviz=True, add_child=True):
+    if not has_graphviz:
+        return build_without_graphviz(schema, tables, deps, root, depth_limit, add_child=add_child)
+    return build_with_graphviz(schema, tables, deps, root, depth_limit, add_child=add_child)
 
 
 def output_graph(outdir, filename, dot):
     dot.render(filename, directory=outdir, cleanup=True)
 
 
-def output_source(outdir, filename, dot):
+def output_source(outdir, filename, dot_source):
     if not os.path.isdir(outdir):
         os.mkdir(outdir)
     with open(os.path.join(outdir, filename), "w") as f:
-        f.write(dot.source)
+        f.write(dot_source)
 
 
 def build_dependency_from_csv(path, schema, filename="_dependency.csv"):

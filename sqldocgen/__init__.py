@@ -7,6 +7,16 @@ else:
 
 print(__file__)
 
+
+def str2bool(v):
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
+
 def main():
     parser = argparse.ArgumentParser(description='Generate SQL View document.')
     parser.add_argument("model_dir", type=str, help="SQL model directory.")
@@ -19,6 +29,7 @@ def main():
     parser.add_argument("-d", "--database", type=str, default=None, help="Database type.")
     parser.add_argument("-g", "--gcp_project_id", type=str, default=None, help="Google Cloud Project ID")
     parser.add_argument("-a", "--gcp_secret_file", type=str, default=None, help="Google Cloud OAuth secrets file (json)")
+    parser.add_argument("-v", "--has_graphviz", type=str2bool, nargs="?", const=True, default=False, help="graphviz is installed")
     args = parser.parse_args()
 
     # Generate markdown doc
@@ -29,6 +40,7 @@ def main():
     db = args.database
     gcp_project_id = args.gcp_project_id
     gcp_secret_file = args.gcp_secret_file
+    has_graphviz = args.has_graphviz
 
     if not os.path.isdir(model_dir):
         raise "The directory %s does not exist" % model_dir
@@ -49,14 +61,13 @@ def main():
     root_table = args.root_table
 
     deps = graph.build_dependency_from_csv(out_dir, schema)
-    if root_table == "*":
-        for table in tables.keys():
-            dot = graph.render_dot(schema, tables, deps, table, 1)
-            # print(dot.source)
-            dot.format = image_format
-            graph.output_graph(os.path.join(out_dir, image_format), table, dot)
-            graph.output_source(os.path.join(out_dir, "dot"), table, dot)
-    elif root_table != "":
+    for table in tables.keys():
+        dot = graph.render_dot(schema, tables, deps, table, 1, has_graphviz=has_graphviz)
+        dot.format = image_format
+        graph.output_graph(os.path.join(out_dir, image_format), table, dot)
+        graph.output_source(os.path.join(out_dir, "dot"), table, dot.source)
+
+    if root_table != "*" and root_table != "":
         dot = graph.render_dot(schema, tables, deps, root, depth_limit, add_child=False)
         dot.format = image_format
         graph.output_graph(os.path.join(out_dir, image_format), root, dot)
