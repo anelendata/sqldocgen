@@ -9,7 +9,10 @@ def field_label(tok):
 
 
 def table_label(name, table):
-    fields = "".join([field_label([x]) for x in list(table)])
+    col_list = list(table)
+    if len(col_list) > 20:
+        col_list = col_list[0:19] + ["..."]
+    fields = "".join([field_label([x]) for x in col_list])
     tok = {"tableName": name, "fields": fields}
     return """<
     <table border='0' cellspacing='0' cellborder='1'>
@@ -127,6 +130,13 @@ def render_dot(schema, tables, deps, root=None, depth_limit=None, use_print=Fals
 
 def output_graph(outdir, filename, dot):
     dot.render(filename, directory=outdir, cleanup=True)
+
+
+def output_source(outdir, filename, dot):
+    if not os.path.isdir(outdir):
+        os.mkdir(outdir)
+    with open(os.path.join(outdir, filename), "w") as f:
+        f.write(dot.source)
 
 
 def build_dependency_from_csv(path, schema, filename="_dependency.csv"):

@@ -2,31 +2,15 @@
 
 SQL Documentation Generator
 
-## Install
+## How to use
 
-## Install Graphviz
-
-```
-brew install Graphviz
-```
-
-Create Python virtual env
+### Install
 
 ```
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+python setup.py install
 ```
 
-## Install node
-
-Installing via [nvm](https://github.com/creationix/nvm) is recommended.
-
-```
-nvm install v10.15.3
-```
-
-## Install gitbook
+### Install gitbook
 
 Install [Gitbook](https://github.com/GitbookIO/gitbook/blob/master/docs/setup.md)
 
@@ -34,12 +18,7 @@ Install [Gitbook](https://github.com/GitbookIO/gitbook/blob/master/docs/setup.md
 npm install gitbook-cli -g
 ```
 
-```
-bin/generate_dep_graph
-```
-
-
-# Input files
+### Input files
 
 ## View dependency CSV files
 
@@ -58,3 +37,32 @@ bin/generate_dep_graph
 
 Follow [here](https://toolchain.gitbook.com/ebook.html)
 
+
+## Install Dev environment
+
+### Install Graphviz
+
+```
+brew install Graphviz
+```
+
+Create Python virtual env
+
+```
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Install node
+
+Installing via [nvm](https://github.com/creationix/nvm) is recommended.
+
+```
+nvm install v10.15.3
+```
+
+
+### setup.py
+
+https://the-hitchhikers-guide-to-packaging.readthedocs.io/en/latest/quickstart.html

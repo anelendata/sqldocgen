@@ -41,10 +41,12 @@ def parse_sql_file(path, fname, schema="", all_columns={}):
         doc_start = dbt.find("/*")
         doc_end = dbt.find("*/")
         doc = dbt[doc_start + 2:doc_end] if doc_start > -1 else ""
-        sql = dbt[doc_end + 2:] if doc_end > -1 else dbt
-        pattern = re.compile(r"`.*`")
+        sql = (dbt[doc_end + 2:] if doc_end > -1 else dbt)
         # pattern = re.compile(r"{{(ref)\('([a-z0-9_]*)'\)}}")
-        for ref in pattern.findall(dbt):
+        pattern = re.compile(r"\bfrom[ ][ ]*[^\s(][^\s]*\b|\bjoin\b[ ][ ]*[^\s(][^\s]*", flags=re.I)
+        for m in pattern.findall(dbt):
+            ref = m[5:].strip().strip("`")
+            print("*" + ref)
             refs.add(ref)
 
     schema_table = schema + "." + table
@@ -65,7 +67,7 @@ def write_doc(dirname, outdir, schema, all_columns, image_format="svg"):
                 d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
                 output = get_markdown(d, sql, s, t, c, r, image_format)
                 f.write(output)
-                toc = toc + ["* [%s.%s](%s.%s.md)" % (schema, tname, schema, tname)]
+                toc = toc + ["* [%s](%s.%s.md)" % (tname, schema, tname)]
                 dep_list = build_dep(dep_list, s, t, r)
 
     # dep_list format: [source_schema, source_table, dep_schema, dep_view]
@@ -75,6 +77,12 @@ def write_doc(dirname, outdir, schema, all_columns, image_format="svg"):
             w.writerow(row)
 
     toc.sort()
+
+    with open(os.path.join(outdir, "README.md"), "w") as f:
+        f.write("# Introduction\n")
+        f.write("\n".join(toc))
+
+
     with open(os.path.join(outdir, "SUMMARY.md"), "w") as f:
         f.write("# Summary\n")
         f.write("\n".join(toc))
