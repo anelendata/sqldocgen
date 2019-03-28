@@ -4,10 +4,10 @@ SQL Documentation Generator
 
 ## How to use
 
-### Install
+### Install Graphviz
 
 ```
-python setup.py install
+brew install Graphviz
 ```
 
 ### Install gitbook
@@ -16,6 +16,12 @@ Install [Gitbook](https://github.com/GitbookIO/gitbook/blob/master/docs/setup.md
 
 ```
 npm install gitbook-cli -g
+```
+
+### Install sqldocgen
+
+```
+python setup.py install
 ```
 
 ### Input files
@@ -39,12 +45,6 @@ Follow [here](https://toolchain.gitbook.com/ebook.html)
 
 
 ## Install Dev environment
-
-### Install Graphviz
-
-```
-brew install Graphviz
-```
 
 Create Python virtual env
 
