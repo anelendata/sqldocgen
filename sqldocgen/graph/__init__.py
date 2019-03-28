@@ -52,11 +52,11 @@ def walk_dep(node, depth, deps, depth_limit=None, active_tables=None, active_dep
     return (active_tables, active_deps)
 
 
-def create_table_act(name, label):
+def create_table_act(name, label, href, target):
     return '''
 "%s" [
 shape=none
-  label=%s ];''' % (name, label)
+  label=%s href="%s" target=%s];''' % (name, label, href, target)
 
 
 def add_dependency(tok):
@@ -86,11 +86,12 @@ node [shape=none]
         label = table_label(table_name, table, style=True)
         cur_schema, cur_table = schema_table_name.split(".")
 
+        href = "../" + schema_table_name + "." + link_ext
+        target = "_parent"
         if cur_schema == schema:
-            dot = dot + create_table_act(schema_table_name, label,
-                    href="../" + schema_table_name + "." + link_ext, target="_parent")
+            dot = dot + create_table_act(schema_table_name, label, href=href, target=target)
         else:
-            dot = dot + create_table_act(schema_table_name, label)
+            dot = dot + create_table_act(schema_table_name, label, href, target)
 
     for dep in active_deps:
         dot = dot + add_dependency({"refTableName": dep[0], "srcTableName":dep[1]})

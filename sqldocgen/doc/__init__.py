@@ -33,6 +33,9 @@ def get_markdown(doc, sql, schema, table, columns, refs, image_format="png"):
 
 
 def parse_sql_file(path, fname, schema="", all_columns={}):
+    if fname[-3:] != "sql":
+        raise ValueError("Non-sql file: " + os.path.join(path, fname))
+
     table = fname[0:-4]
     refs = set()
     cols = []
@@ -44,9 +47,8 @@ def parse_sql_file(path, fname, schema="", all_columns={}):
         sql = (dbt[doc_end + 2:] if doc_end > -1 else dbt)
         # pattern = re.compile(r"{{(ref)\('([a-z0-9_]*)'\)}}")
         pattern = re.compile(r"\bfrom[ ][ ]*[^\s(][^\s]*\b|\bjoin\b[ ][ ]*[^\s(][^\s]*", flags=re.I)
-        for m in pattern.findall(dbt):
+        for m in pattern.findall(sql):
             ref = m[5:].strip().strip("`")
-            print("*" + ref)
             refs.add(ref)
 
     schema_table = schema + "." + table
@@ -64,7 +66,11 @@ def write_doc(dirname, outdir, schema, all_columns, image_format="svg"):
         for fname in files:
             tname = fname[0:-4]
             with open(os.path.join(outdir, schema + "." + tname + ".md"), "w") as f:
-                d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
+                try:
+                    d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
+                except ValueError as e:
+                    print(e)
+                    next
                 output = get_markdown(d, sql, s, t, c, r, image_format)
                 f.write(output)
                 toc = toc + ["* [%s](%s.%s.md)" % (tname, schema, tname)]

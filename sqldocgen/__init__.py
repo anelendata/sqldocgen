@@ -63,18 +63,29 @@ def main():
     deps = graph.build_dependency_from_csv(out_dir, schema)
     for table in tables.keys():
         dot = graph.render_dot(schema, tables, deps, table, 1, has_graphviz=has_graphviz)
-        dot.format = image_format
-        graph.output_graph(os.path.join(out_dir, image_format), table, dot)
-        graph.output_source(os.path.join(out_dir, "dot"), table, dot.source)
+        if has_graphviz:
+            dot.format = image_format
+            graph.output_graph(os.path.join(out_dir, image_format), table, dot)
+            graph.output_source(os.path.join(out_dir, "dot"), table, dot.source)
+        else:
+            graph.output_source(os.path.join(out_dir, "dot"), table, dot)
 
     if root_table != "*":
-        dot = graph.render_dot(schema, tables, deps, root, depth_limit, add_child=False)
-        dot.format = image_format
-        graph.output_graph(os.path.join(out_dir, image_format), root, dot)
+        dot = graph.render_dot(schema, tables, deps, root, depth_limit, add_child=False, has_graphviz=has_graphviz)
+        if has_graphviz:
+            dot.format = image_format
+            graph.output_graph(os.path.join(out_dir, image_format), root, dot)
+            graph.output_source(os.path.join(out_dir, "dot"), root, dot.source)
+        else:
+            graph.output_source(os.path.join(out_dir, "dot"), root, dot)
     else:
-        dot = graph.render_dot(schema, tables, deps, None, None, add_child=False)
-        dot.format = image_format
-        graph.output_graph(os.path.join(out_dir, image_format), "all_tables", dot)
+        dot = graph.render_dot(schema, tables, deps, None, None, add_child=False, has_graphviz=has_graphviz)
+        if has_graphviz:
+            dot.format = image_format
+            graph.output_graph(os.path.join(out_dir, image_format), "all_tables", dot)
+            graph.output_source(os.path.join(out_dir, "dot"), "all_tables", dot.source)
+        else:
+            graph.output_source(os.path.join(out_dir, "dot"), "all_tables", dot)
 
 
 if __name__ == '__main__':
