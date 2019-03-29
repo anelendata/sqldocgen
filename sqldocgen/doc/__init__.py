@@ -18,8 +18,22 @@ def build_dep(dep_list, dep_schema, dep_view, refs):
     return dep_list
 
 
-def get_markdown(doc, sql, schema, table, columns, refs, image_format="png"):
-    if image_format == "svg":
+def get_markdown(doc, sql, schema, table, columns, refs, image_format="png", dot_dir="."):
+    if image_format == "d3":
+        with open(os.path.join(dot_dir, "%s.%s.dot" % (schema, table)), "r") as f:
+            dot = f.read()
+        image_embed = """
+<script src="https://d3js.org/d3.v4.min.js"></script>
+<script src="https://unpkg.com/viz.js@1.8.0/viz.js" type="application/javascript"></script>
+<script src="https://unpkg.com/d3-graphviz@1.4.0/build/d3-graphviz.min.js"></script>
+<div id="graph" style="text-align: center;"></div>
+<script>
+d3.select("#graph").graphviz()
+  .fade(false)
+  .renderDot(`%s`);
+</script>""" % dot
+
+    elif image_format == "svg":
         image_embed = '<embed src="./svg/%s.%s.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>' % (schema, table)
     else:
         image_embed = '<img src="./%s/%s.%s.%s" width="80%%"/>' % (image_format, schema, table, image_format)
@@ -72,6 +86,7 @@ def parse_sql_file(path, fname, schema="", all_columns={}):
 def write_doc(model_dir, out_dir, schema, all_columns, image_format="svg"):
     model_dirs = os.walk(model_dir)
     toc = []
+    dot_dir = os.path.join(out_dir, "dot")
     for cdir, dirs, files in model_dirs:
         for fname in files:
             if fname[-3:] != "sql":
@@ -87,7 +102,7 @@ def write_doc(model_dir, out_dir, schema, all_columns, image_format="svg"):
             if not r:
                 print("Not found dependency")
                 continue
-            output = get_markdown(d, sql, s, t, c, r, image_format)
+            output = get_markdown(d, sql, s, t, c, r, image_format, dot_dir=dot_dir)
             with open(os.path.join(out_dir, schema + "." + tname + ".md"), "w") as f:
                 f.write(output)
             toc = toc + ["* [%s](%s.%s.md)" % (tname, schema, tname)]

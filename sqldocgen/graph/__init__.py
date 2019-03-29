@@ -71,15 +71,18 @@ def walk_dep(node, depth, deps, depth_limit=None, active_tables=None, active_dep
     return (active_tables, active_deps)
 
 
-def create_table_act(name, label, href, target):
-    return '''
-"%s" [
-shape=none
-  label=%s href="%s" target=%s];''' % (name, label, href, target)
+def create_table_act(name, label, href=None, target=None):
+    keys = {"tableName": name, "label": label, "href":"", "target": ""}
+    if href:
+        keys["href"] = 'href="%s"' % href
+    if target:
+        keys["target"] = 'target="%s"' % target
+
+    return '"{tableName}" [shape=none label={label} {href} {target}];'.format(**keys)
 
 
-def add_dependency(tok):
-    return '  "{refTableName}" -> "{srcTableName}"'.format(**tok)
+def add_dependency(keys):
+    return '  "{refTableName}" -> "{srcTableName}"'.format(**keys)
 
 
 def build_without_graphviz(schema, tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):

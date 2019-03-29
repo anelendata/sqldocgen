@@ -41,6 +41,12 @@ def main():
     gcp_project_id = args.gcp_project_id
     gcp_secret_file = args.gcp_secret_file
     has_graphviz = args.has_graphviz
+    depth_limit = args.depth_limit
+    image_format = args.image_format
+    root_table = args.root_table
+
+    if not has_graphviz and image_format != "d3":
+        raise ValueError("Must have graphviz when image format is not d3")
 
     if not os.path.isdir(model_dir):
         raise "The directory %s does not exist" % model_dir
@@ -54,12 +60,7 @@ def main():
     else:
         tables = doc.read_columns_from_csv(model_dir, table_schemas)
 
-
     # Generate graph
-    depth_limit = args.depth_limit
-    image_format = args.image_format
-    root_table = args.root_table
-
     dep_table = doc.make_tree(model_dir, out_dir, schema, tables, write_file=False)
     deps = graph.build_dependency(out_dir, schema, dep_table=dep_table)
 
@@ -68,28 +69,28 @@ def main():
         if has_graphviz:
             dot.format = image_format
             graph.output_graph(os.path.join(out_dir, image_format), table, dot)
-            graph.output_source(os.path.join(out_dir, "dot"), table, dot.source)
+            graph.output_source(os.path.join(out_dir, "dot"), table + ".dot", dot.source)
         else:
-            graph.output_source(os.path.join(out_dir, "dot"), table, dot)
+            graph.output_source(os.path.join(out_dir, "dot"), table + ".dot", dot)
 
     if root_table != "*":
         dot = graph.render_dot(schema, tables, deps, root, depth_limit, add_child=False, has_graphviz=has_graphviz)
         if has_graphviz:
             dot.format = image_format
             graph.output_graph(os.path.join(out_dir, image_format), root, dot)
-            graph.output_source(os.path.join(out_dir, "dot"), root, dot.source)
+            graph.output_source(os.path.join(out_dir, "dot"), root + ".dot", dot.source)
         else:
-            graph.output_source(os.path.join(out_dir, "dot"), root, dot)
+            graph.output_source(os.path.join(out_dir, "dot"), root + ".dot", dot)
     else:
         dot = graph.render_dot(schema, tables, deps, None, None, add_child=False, has_graphviz=has_graphviz)
         if has_graphviz:
             dot.format = image_format
             graph.output_graph(os.path.join(out_dir, image_format), "all_tables", dot)
-            graph.output_source(os.path.join(out_dir, "dot"), "all_tables", dot.source)
+            graph.output_source(os.path.join(out_dir, "dot"), "all_tables.dot", dot.source)
         else:
-            graph.output_source(os.path.join(out_dir, "dot"), "all_tables", dot)
+            graph.output_source(os.path.join(out_dir, "dot"), "all_tables.dot", dot)
 
-    doc.write_doc(model_dir, out_dir, schema, tables, image_format=image_format)
+    doc.write_doc(model_dir, out_dir, schema, tables, image_format=image_format,)
 
 
 if __name__ == '__main__':
