@@ -20,45 +20,55 @@ def str2bool(v):
 def main():
     parser = argparse.ArgumentParser(description='Generate SQL View document.')
     parser.add_argument("model_dir", type=str, help="SQL model directory.")
-    parser.add_argument("-o", "--out_dir", type=str, default=".", help="Document output location")
-    parser.add_argument("-t", "--table_schemas", type=str, default="table_schema.csv", help="CSV file for table schema: <schema>, <table>, <column>")
-    parser.add_argument("-s", "--schema", type=str, default=None, help="Limit the doc to this schema")
-    parser.add_argument("-i", "--image_format", type=str, default="d3", help="Image format (default=d3, svg, png, jpg)")
-    parser.add_argument("-l", "--depth_limit", type=int, default=1, help="Graph depth (default = 1)")
-    parser.add_argument("-r", "--root_table", type=str, default="*", help="Generate doc only derived from this root table.")
-    parser.add_argument("-d", "--database", type=str, default=None, help="Database type.")
-    parser.add_argument("-g", "--gcp_project_id", type=str, default=None, help="Google Cloud Project ID")
-    parser.add_argument("-a", "--gcp_secret_file", type=str, default=None, help="Google Cloud OAuth secrets file (json)")
-    parser.add_argument("-v", "--has_graphviz", type=str2bool, nargs="?", const=True, default=False, help="graphviz is installed default=False")
+    parser.add_argument("-o", "--out_dir", type=str, default=".", help="Document output location. Default is the current directory.")
+    parser.add_argument("-s", "--schema", type=str, default=None, help="The schema to generate the documentation. Currently, the document is generated per schema.")
+    parser.add_argument("-i", "--image_format", type=str, default="d3", help="Image format (default=d3, svg, png, jpg). You need to install Graphviz and Python Graphviz to sepecify non d3 formats.")
+    parser.add_argument("-g", "--has_graphviz", type=str2bool, nargs="?", const=True, default=False, help="graphviz is installed default=False")
+    parser.add_argument("-c", "--column_data_source", type=str, default=None, help="Column data source. bigquery or csv are currently supported. For csv, you need to have a CSV file under the model directory with the schema name.")
+    parser.add_argument("--gcp_project_id", type=str, default=None, help="Google Cloud Project ID")
     args = parser.parse_args()
 
     # Generate markdown doc
     model_dir = args.model_dir
     out_dir = args.out_dir
-    table_schemas = args.table_schemas
     schema = args.schema
-    db = args.database
+    column_data_source = args.column_data_source
     gcp_project_id = args.gcp_project_id
-    gcp_secret_file = args.gcp_secret_file
     has_graphviz = args.has_graphviz
-    depth_limit = args.depth_limit
     image_format = args.image_format
-    root_table = args.root_table
 
     if not has_graphviz and image_format != "d3":
         raise ValueError("Must have graphviz when image format is not d3")
 
     if not os.path.isdir(model_dir):
-        raise "The directory %s does not exist" % model_dir
+        alt_dir = os.path.join(os.getcwd(), model_dir)
+        if os.path.isdir(alt_dir):
+            model_dir = alt_dir
+        else:
+            raise ValueError("The model directory %s does not exist" % model_dir)
 
-    if db == "bigquery":
-        if not all([gcp_project_id, gcp_secret_file]):
-            raise(Exception("To use BigQuery, set gcp_project_id and gcp_secret_file"))
-        credentials = bigquery.authenticate(gcp_secret_file)
+    print("Model directory: " + model_dir)
+
+    if out_dir is "." or not os.path.isdir(out_dir):
+        alt_dir = os.path.join(os.getcwd(), out_dir)
+        if os.path.isdir(alt_dir):
+            out_dir = alt_dir
+        else:
+            raise ValueError("The output directory %s does not exist" % out_dir)
+
+    print("Ouput directory: " + out_dir)
+
+    if column_data_source == "bigquery":
+        if not gcp_project_id:
+            raise(Exception("To use BigQuery, set gcp_project_id"))
+        credentials = bigquery.authenticate()
+        # credentials = bigquery.authenticate(gcp_secret_file)
         client = bigquery.get_client(gcp_project_id, credentials)
         tables = bigquery.get_schema_table_column(client, schema)
+    elif column_data_source == "csv":
+        tables = doc.read_columns_from_csv(model_dir, schema + ".csv")
     else:
-        tables = doc.read_columns_from_csv(model_dir, table_schemas)
+        raise ValueError("Unsupported column data source type: " + column_data_source)
 
     # Generate graph
     dep_table = doc.make_tree(model_dir, out_dir, schema, tables, write_file=False)
@@ -73,22 +83,13 @@ def main():
         else:
             graph.output_source(os.path.join(out_dir, "dot"), table + ".dot", dot)
 
-    if root_table != "*":
-        dot = graph.render_dot(schema, tables, deps, root, depth_limit, add_child=False, has_graphviz=has_graphviz)
-        if has_graphviz:
-            dot.format = image_format
-            graph.output_graph(os.path.join(out_dir, image_format), root, dot)
-            graph.output_source(os.path.join(out_dir, "dot"), root + ".dot", dot.source)
-        else:
-            graph.output_source(os.path.join(out_dir, "dot"), root + ".dot", dot)
+    dot = graph.render_dot(schema, tables, deps, None, None, add_child=False, has_graphviz=has_graphviz)
+    if has_graphviz:
+        dot.format = image_format
+        graph.output_graph(os.path.join(out_dir, image_format), "all_tables", dot)
+        graph.output_source(os.path.join(out_dir, "dot"), "all_tables.dot", dot.source)
     else:
-        dot = graph.render_dot(schema, tables, deps, None, None, add_child=False, has_graphviz=has_graphviz)
-        if has_graphviz:
-            dot.format = image_format
-            graph.output_graph(os.path.join(out_dir, image_format), "all_tables", dot)
-            graph.output_source(os.path.join(out_dir, "dot"), "all_tables.dot", dot.source)
-        else:
-            graph.output_source(os.path.join(out_dir, "dot"), "all_tables.dot", dot)
+        graph.output_source(os.path.join(out_dir, "dot"), "all_tables.dot", dot)
 
     doc.write_doc(model_dir, out_dir, schema, tables, image_format=image_format,)
 

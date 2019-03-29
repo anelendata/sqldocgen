@@ -19,7 +19,7 @@ def authenticate_oauth():
     return credentials
 
 
-def authenticate(client_secrets_file):
+def authenticate():
     return authenticate_oauth()
 
 
@@ -55,8 +55,8 @@ def get_schema_table_column(
 
 if __name__ == "__main__":
     project_id = "my_project_id"
-    client_secrets_file = ".secret/xxxx.apps.googleusercontent.com.json"
-    credentials = authenticate(client_secrets_file)
+    # client_secrets_file = ".secret/xxxx.apps.googleusercontent.com.json"
+    credentials = authenticate()
     client = get_client(project_id, credentials)
     all_columns = get_schema_table_column(client, "my_schema")
     print(all_columns)
