@@ -1,6 +1,8 @@
 import csv, os
 from datetime import datetime
-from graphviz import  Digraph
+
+
+graphviz = None
 
 
 def field_label(tok, style=False):
@@ -123,7 +125,7 @@ node [shape=none]
 
 def build_with_graphviz(schema, tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
     """Build with graphviz library"""
-    dot = Digraph(comment=schema + ' %s' % datetime.now())
+    dot = graphviz.Digraph(comment=schema + ' %s' % datetime.now())
     dot.attr(rankdir='LR') #, size='8,5')
     dot.attr('node', shape='none')
 
@@ -163,6 +165,11 @@ def build_with_graphviz(schema, tables, deps, root=None, depth_limit=None, link_
 def render_dot(schema, tables, deps, root=None, depth_limit=None, has_graphviz=True, add_child=True):
     if not has_graphviz:
         return build_without_graphviz(schema, tables, deps, root, depth_limit, add_child=add_child)
+
+    global graphviz
+    if graphviz is None:
+        import graphviz
+
     return build_with_graphviz(schema, tables, deps, root, depth_limit, add_child=add_child)
 
 
@@ -177,15 +184,15 @@ def output_source(outdir, filename, dot_source):
         f.write(dot_source)
 
 
-def build_dependency_from_csv(path, schema, filename="_dependency.csv"):
+def build_dependency(path, schema, dep_table=None, csv_file="_dependency.csv"):
     source_schema_col = 0
     source_table_col = 1
     depend_schema_col = 2
     depend_view_col = 3
     deps = set()
-    with open(os.path.join(path, filename), "r") as csvfile:
-        rows = csv.reader(csvfile, delimiter=',', quotechar='"')
-        for row in rows:
+
+    if dep_table is not None:
+        for row in dep_table:
             source_schema_table = row[source_schema_col] + "." + row[source_table_col]
             depend_schema_view = row[depend_schema_col] + "." + row[depend_view_col]
 
@@ -193,12 +200,25 @@ def build_dependency_from_csv(path, schema, filename="_dependency.csv"):
                 continue
 
             deps.add((depend_schema_view, source_schema_table))
+    else:
+        with open(os.path.join(path, csv_file), "r") as csv_file:
+            rows = csv.reader(csv_file, delimiter=',', quotechar='"')
+            for row in rows:
+                source_schema_table = row[source_schema_col] + "." + row[source_table_col]
+                depend_schema_view = row[depend_schema_col] + "." + row[depend_view_col]
+
+                if schema != row[depend_schema_col]:
+                    continue
+
+                deps.add((depend_schema_view, source_schema_table))
+
     return deps
 
 
 if __name__ == '__main__':
     import sys
     import doc
+    from graphviz import  Digraph
     if len(sys.argv) < 2:
         print("graph <dbt_dir> <work_dir> <all_column_file.csv> <root_schema_table> <depth_limit>")
     dbt_dir = sys.argv[1] if len(sys.argv) > 1 else "."
@@ -211,7 +231,7 @@ if __name__ == '__main__':
     image_format = "png"
     # image_format = "svg"
 
-    deps = build_dependency_from_csv(work_dir, schema)
+    deps = build_dependency(work_dir, schema)
     tables = doc.read_columns_from_csv(os.path.join(dbt_dir, "models"), all_column_file)
     if root_table == "*":
         for table in tables.keys():

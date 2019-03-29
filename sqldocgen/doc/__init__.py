@@ -69,41 +69,31 @@ def parse_sql_file(path, fname, schema="", all_columns={}):
     return (doc, sql, schema, table, columns, refs)
 
 
-def write_doc(dirname, outdir, schema, all_columns, image_format="svg"):
-    model_dir = os.walk(dirname)
+def write_doc(model_dir, out_dir, schema, all_columns, image_format="svg"):
+    model_dirs = os.walk(model_dir)
     toc = []
-    dep_list = []
-    print("Building TOC")
-    for cdir, dirs, files in model_dir:
+    for cdir, dirs, files in model_dirs:
         for fname in files:
             if fname[-3:] != "sql":
                 print("Skipping non-sql file: " + fname)
                 continue
 
             tname = fname[0:-4]
-            with open(os.path.join(outdir, schema + "." + tname + ".md"), "w") as f:
-                try:
-                    d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
-                except ValueError as e:
-                    print(e)
-                    continue
-                if not r:
-                    print("Not found dependency")
-                    continue
-                output = get_markdown(d, sql, s, t, c, r, image_format)
+            try:
+                d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
+            except ValueError as e:
+                print(e)
+                continue
+            if not r:
+                print("Not found dependency")
+                continue
+            output = get_markdown(d, sql, s, t, c, r, image_format)
+            with open(os.path.join(out_dir, schema + "." + tname + ".md"), "w") as f:
                 f.write(output)
-                toc = toc + ["* [%s](%s.%s.md)" % (tname, schema, tname)]
-                dep_list = build_dep(dep_list, s, t, r)
-
-    # dep_list format: [source_schema, source_table, dep_schema, dep_view]
-    with open(os.path.join(outdir, "_dependency.csv"), "w") as f:
-        w = csv.writer(f)
-        for row in dep_list:
-            w.writerow(row)
+            toc = toc + ["* [%s](%s.%s.md)" % (tname, schema, tname)]
 
     toc.sort()
-
-    with open(os.path.join(outdir, "README.md"), "w") as f:
+    with open(os.path.join(out_dir, "README.md"), "w") as f:
         f.write("# %s\n" % schema)
         if image_format == "svg":
             f.write('<embed src="./svg/all_tables.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>\n')
@@ -112,9 +102,39 @@ def write_doc(dirname, outdir, schema, all_columns, image_format="svg"):
         f.write("\n".join(toc))
 
 
-    with open(os.path.join(outdir, "SUMMARY.md"), "w") as f:
+    with open(os.path.join(out_dir, "SUMMARY.md"), "w") as f:
         f.write("# Summary\n")
         f.write("\n".join(toc))
+
+
+def make_tree(model_dir, out_dir, schema, all_columns, write_file=True):
+    model_dirs = os.walk(model_dir)
+    toc = []
+    dep_list = []
+    print("Building TOC")
+    for cdir, dirs, files in model_dirs:
+        for fname in files:
+            if fname[-3:] != "sql":
+                print("Skipping non-sql file: " + fname)
+                continue
+            try:
+                d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
+            except ValueError as e:
+                print(e)
+                continue
+            if not r:
+                print("Not found dependency")
+                continue
+            dep_list = build_dep(dep_list, s, t, r)
+
+    if write_file:
+        # dep_list format: [source_schema, source_table, dep_schema, dep_view]
+        with open(os.path.join(out_dir, "_dependency.csv"), "w") as f:
+            w = csv.writer(f)
+            for row in dep_list:
+                w.writerow(row)
+
+    return dep_list
 
 
 def read_columns_from_csv(dirname, all_column_file,

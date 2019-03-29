@@ -54,14 +54,15 @@ def main():
     else:
         tables = doc.read_columns_from_csv(model_dir, table_schemas)
 
-    doc.write_doc(model_dir, out_dir, schema, tables)
 
     # Generate graph
     depth_limit = args.depth_limit
     image_format = args.image_format
     root_table = args.root_table
 
-    deps = graph.build_dependency_from_csv(out_dir, schema)
+    dep_table = doc.make_tree(model_dir, out_dir, schema, tables, write_file=False)
+    deps = graph.build_dependency(out_dir, schema, dep_table=dep_table)
+
     for table in tables.keys():
         dot = graph.render_dot(schema, tables, deps, table, 1, has_graphviz=has_graphviz)
         if has_graphviz:
@@ -87,6 +88,8 @@ def main():
             graph.output_source(os.path.join(out_dir, "dot"), "all_tables", dot.source)
         else:
             graph.output_source(os.path.join(out_dir, "dot"), "all_tables", dot)
+
+    doc.write_doc(model_dir, out_dir, schema, tables, image_format=image_format)
 
 
 if __name__ == '__main__':
