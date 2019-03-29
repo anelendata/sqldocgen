@@ -26,6 +26,7 @@ def main():
     parser.add_argument("-g", "--has_graphviz", type=str2bool, nargs="?", const=True, default=False, help="graphviz is installed default=False")
     parser.add_argument("-c", "--column_data_source", type=str, default=None, help="Column data source. bigquery or csv are currently supported. For csv, you need to have a CSV file under the model directory with the schema name.")
     parser.add_argument("--gcp_project_id", type=str, default=None, help="Google Cloud Project ID")
+    parser.add_argument("--gcp_secrets_file", type=str, default=None, help="Google Cloud secrets file (.json)")
     args = parser.parse_args()
 
     # Generate markdown doc
@@ -34,6 +35,7 @@ def main():
     schema = args.schema
     column_data_source = args.column_data_source
     gcp_project_id = args.gcp_project_id
+    gcp_secrets_file = args.gcp_secrets_file
     has_graphviz = args.has_graphviz
     image_format = args.image_format
 
@@ -58,11 +60,20 @@ def main():
 
     print("Ouput directory: " + out_dir)
 
+    if gcp_secrets_file is not None and not os.path.isfile(gcp_secrets_file):
+        alt_loc = os.path.join(os.getcwd(), gcp_secrets_file)
+        if os.path.isdir(alt_loc):
+            gcp_secrets_file = alt_loc
+        else:
+            raise ValueError("GCP secrets file %s does not exist" % gcp_secrets_file)
+
     if column_data_source == "bigquery":
         if not gcp_project_id:
             raise(Exception("To use BigQuery, set gcp_project_id"))
-        credentials = bigquery.authenticate()
-        # credentials = bigquery.authenticate(gcp_secret_file)
+        if gcp_secrets_file is not None:
+            credentials = bigquery.authenticate(gcp_project_id, gcp_secrets_file)
+        else:
+            credentials = bigquery.refresh_oauth()
         client = bigquery.get_client(gcp_project_id, credentials)
         tables = bigquery.get_schema_table_column(client, schema)
     elif column_data_source == "csv":

@@ -55,7 +55,7 @@ npm install gitbook-cli -g
 
 Example:
 ```
-sqldocgen -o ./doc -s analytics -c bigquery --gcp_project_id sandbox-000000 ./models
+sqldocgen -o ./doc -s analytics -c bigquery --gcp_project_id sandbox-000000 --gcp_secrets_file path_to/client_secret.json ./models
 ```
 
 Here is the full usage description (`sqldocgen -h` to show this help)
@@ -64,6 +64,7 @@ Here is the full usage description (`sqldocgen -h` to show this help)
 usage: sqldocgen [-h] [-o OUT_DIR] [-s SCHEMA] [-i IMAGE_FORMAT]
                  [-g [HAS_GRAPHVIZ]] [-c COLUMN_DATA_SOURCE]
                  [--gcp_project_id GCP_PROJECT_ID]
+                 [--gcp_secrets_file GCP_SECRETS_FILE]
                  model_dir
 
 Generate SQL View document.
@@ -91,7 +92,20 @@ optional arguments:
                         the model directory with the schema name.
   --gcp_project_id GCP_PROJECT_ID
                         Google Cloud Project ID
+  --gcp_secrets_file GCP_SECRETS_FILE
+                        Google Cloud secrets file (.json)
 ```
+
+# BigQuery specific
+
+You will need to specify `--gcp_secrets_file` option to specify the secret file
+when you first authenticate to access BigQuery from sqldocgen.
+
+Please follow
+[Google's OAuth documentation](https://developers.google.com/identity/protocols/OAuth2WebServer#prerequisites)
+to download secrets json file.
+
+You do not need to specify this option from the second time until the authentication is revoked.
 
 ## Viewing the documentation
 
