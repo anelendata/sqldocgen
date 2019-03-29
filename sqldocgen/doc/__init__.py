@@ -70,7 +70,6 @@ def parse_sql_file(path, fname, schema="", all_columns={}):
             refs.add(ref)
 
         # dbt pattern
-        print("Searching dbt pattern")
         pattern = re.compile(r"{{[ ]*ref[ ]*\([ ]*'([a-zA-Z_]*)'[ ]*\)[ ]*}}")
         for m in pattern.findall(sql):
             ref = schema + "." + m.strip().strip("`")

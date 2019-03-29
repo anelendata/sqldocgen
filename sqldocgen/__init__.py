@@ -23,13 +23,13 @@ def main():
     parser.add_argument("-o", "--out_dir", type=str, default=".", help="Document output location")
     parser.add_argument("-t", "--table_schemas", type=str, default="table_schema.csv", help="CSV file for table schema: <schema>, <table>, <column>")
     parser.add_argument("-s", "--schema", type=str, default=None, help="Limit the doc to this schema")
-    parser.add_argument("-i", "--image_format", type=str, default="svg", help="Image format (svg, png, jpg)")
+    parser.add_argument("-i", "--image_format", type=str, default="d3", help="Image format (default=d3, svg, png, jpg)")
     parser.add_argument("-l", "--depth_limit", type=int, default=1, help="Graph depth (default = 1)")
     parser.add_argument("-r", "--root_table", type=str, default="*", help="Generate doc only derived from this root table.")
     parser.add_argument("-d", "--database", type=str, default=None, help="Database type.")
     parser.add_argument("-g", "--gcp_project_id", type=str, default=None, help="Google Cloud Project ID")
     parser.add_argument("-a", "--gcp_secret_file", type=str, default=None, help="Google Cloud OAuth secrets file (json)")
-    parser.add_argument("-v", "--has_graphviz", type=str2bool, nargs="?", const=True, default=False, help="graphviz is installed")
+    parser.add_argument("-v", "--has_graphviz", type=str2bool, nargs="?", const=True, default=False, help="graphviz is installed default=False")
     args = parser.parse_args()
 
     # Generate markdown doc
