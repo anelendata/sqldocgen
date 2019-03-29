@@ -6,12 +6,26 @@ from graphviz import  Digraph
 def field_label(tok, style=False):
     label = "<tr><td "
     if style:
-        label = label + "bgcolor='#CCCCCC' align='left' "
+        label = label + "bgcolor='#FFFFFF' align='left' border='0' "
     label = label + "port='{0}'>{0}</td></tr>\n".format(tok[0])
     return label
 
 
-def table_label(name, table, style=False):
+def table_label(schema_table_name, table, style=False, current=None):
+    # Current page's table
+    if current == schema_table_name:
+        td_header_color = "#AACCFF"
+        class_name = "current"
+    else:
+        td_header_color = "#CCCCCC"
+        class_name = "normal"
+
+    schema_name, table_name = schema_table_name.split(".")
+    if current is None or schema_name == current.split(".")[-2]:
+        name = table_name
+    else:
+        name = schema_table_name
+
     col_list = list(table)
     if len(col_list) > 20:
         col_list = col_list[0:19] + ["..."]
@@ -19,12 +33,15 @@ def table_label(name, table, style=False):
     tok = {"tableName": name, "fields": fields,
             "table_style": "", "td_style":  "", "font": "", "font_close": ""}
     if style:
-        tok["table_style"] = "border='0' cellspacing='0' cellborder='1'"
-        tok["td_style"] = "bgcolor='#CCCCCC'"
+        tok["table_style"] = "border='1' cellspacing='0' cellborder='1'"
+        tok["td_style"] = "bgcolor='" + td_header_color + "' border='0' "
         tok["font"] = "<font face='Times-bold' point-size='20'>"
         tok["font_close"] = "</font>"
+        tok["class"] = ""
+    else:
+        tok["class"] = "class='" + class_name + "'"
     label = """<
-    <table {table_style}><tr><td {td_style}>{font}{tableName}{font_close}</td></tr>
+    <table {class} {table_style}><tr><td {td_style}>{font}{tableName}{font_close}</td></tr>
         {fields}
     </table> >""".format(**tok)
     return label
@@ -70,10 +87,12 @@ rankdir =LR
 node [shape=none]
 """ % (schema, datetime.now())
 
+    root_table_name = None
     if root is None:
         active_tables = tables.keys()
         active_deps = deps
     else:
+        root_table_name = root.split(".")[-1]
         active_tables, active_deps = walk_dep(root, 0, deps, depth_limit)
         if add_child:
             t, d = walk_dep(root, 0, deps, depth_limit, reverse=True)
@@ -83,15 +102,17 @@ node [shape=none]
     for schema_table_name in active_tables:
         table_name = schema_table_name.split(".")[-1]
         table = tables[schema_table_name] if schema_table_name in tables.keys() else {}
-        label = table_label(table_name, table, style=True)
+
         cur_schema, cur_table = schema_table_name.split(".")
+        label = table_label(schema_table_name, table, style=True, current=root)
 
         href = "../" + schema_table_name + "." + link_ext
         target = "_parent"
+
         if cur_schema == schema:
             dot = dot + create_table_act(schema_table_name, label, href=href, target=target)
         else:
-            dot = dot + create_table_act(schema_table_name, label, href, target)
+            dot = dot + create_table_act(schema_table_name, label)
 
     for dep in active_deps:
         dot = dot + add_dependency({"refTableName": dep[0], "srcTableName":dep[1]})
@@ -106,10 +127,12 @@ def build_with_graphviz(schema, tables, deps, root=None, depth_limit=None, link_
     dot.attr(rankdir='LR') #, size='8,5')
     dot.attr('node', shape='none')
 
+    root_table_name = None
     if root is None:
         active_tables = tables.keys()
         active_deps = deps
     else:
+        root_table_name = root.split(".")[-1]
         active_tables, active_deps = walk_dep(root, 0, deps, depth_limit)
         if add_child:
             t, d = walk_dep(root, 0, deps, depth_limit, reverse=True)
@@ -119,8 +142,13 @@ def build_with_graphviz(schema, tables, deps, root=None, depth_limit=None, link_
     for schema_table_name in active_tables:
         table_name = schema_table_name.split(".")[-1]
         table = tables[schema_table_name] if schema_table_name in tables.keys() else {}
-        label = table_label(table_name, table, style=True)
+
         cur_schema, cur_table = schema_table_name.split(".")
+        label = table_label(schema_table_name, table, style=True, current=root)
+
+        href = "../" + schema_table_name + "." + link_ext
+        target = "_parent"
+
         if cur_schema == schema:
             dot.node(schema_table_name, label, href="../" + schema_table_name + "." + link_ext, target="_parent")
         else:

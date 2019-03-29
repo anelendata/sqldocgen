@@ -10,7 +10,10 @@ def build_dep(dep_list, dep_schema, dep_view, refs):
     for ref in refs:
         s = ref.strip("`").split(".")
         table = s[-1]
-        schema = s[-2]
+        if len(s) >= 2:
+            schema = s[-2]
+        else:
+            schema = dep_schema
         dep_list.append([schema, table, dep_schema, dep_view])
     return dep_list
 
@@ -21,9 +24,9 @@ def get_markdown(doc, sql, schema, table, columns, refs, image_format="png"):
     else:
         image_embed = '<img src="./%s/%s.%s.%s" width="80%%"/>' % (image_format, schema, table, image_format)
 
-    output = (["## %s.%s" % (schema, table),
-               doc] +
-              ['\n' + image_embed] +
+    output = (["## %s.%s" % (schema, table)] +
+              ["\n" + image_embed] +
+              ["\n" + doc] +
               ["\n### Columns"] +
               ["- %s" % col for col in columns] +
               ["\n### Depencencies"] +
@@ -33,22 +36,30 @@ def get_markdown(doc, sql, schema, table, columns, refs, image_format="png"):
 
 
 def parse_sql_file(path, fname, schema="", all_columns={}):
+    fullpath = os.path.join(path, fname)
     if fname[-3:] != "sql":
-        raise ValueError("Non-sql file: " + os.path.join(path, fname))
+        raise ValueError("Non-sql file: " + fullpath)
 
+    print("Parsing " + fullpath)
     table = fname[0:-4]
     refs = set()
     cols = []
-    with open(os.path.join(path, fname)) as f:
+    with open(fullpath) as f:
         dbt = f.read()
         doc_start = dbt.find("/*")
         doc_end = dbt.find("*/")
         doc = dbt[doc_start + 2:doc_end] if doc_start > -1 else ""
         sql = (dbt[doc_end + 2:] if doc_end > -1 else dbt)
-        # pattern = re.compile(r"{{(ref)\('([a-z0-9_]*)'\)}}")
-        pattern = re.compile(r"\bfrom[ ][ ]*[^\s(][^\s]*\b|\bjoin\b[ ][ ]*[^\s(][^\s]*", flags=re.I)
+        pattern = re.compile(r"\bfrom[ ][ ]*[^\s({][^\s]*\b|\bjoin\b[ ][ ]*[^\s({][^\s]*", flags=re.I)
         for m in pattern.findall(sql):
-            ref = m[5:].strip().strip("`")
+            ref = m[5:].strip().strip("`").strip("[").strip("]")
+            refs.add(ref)
+
+        # dbt pattern
+        print("Searching dbt pattern")
+        pattern = re.compile(r"{{[ ]*ref[ ]*\([ ]*'([a-zA-Z_]*)'[ ]*\)[ ]*}}")
+        for m in pattern.findall(sql):
+            ref = schema + "." + m.strip().strip("`")
             refs.add(ref)
 
     schema_table = schema + "." + table
@@ -62,15 +73,23 @@ def write_doc(dirname, outdir, schema, all_columns, image_format="svg"):
     model_dir = os.walk(dirname)
     toc = []
     dep_list = []
+    print("Building TOC")
     for cdir, dirs, files in model_dir:
         for fname in files:
+            if fname[-3:] != "sql":
+                print("Skipping non-sql file: " + fname)
+                continue
+
             tname = fname[0:-4]
             with open(os.path.join(outdir, schema + "." + tname + ".md"), "w") as f:
                 try:
                     d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
                 except ValueError as e:
                     print(e)
-                    next
+                    continue
+                if not r:
+                    print("Not found dependency")
+                    continue
                 output = get_markdown(d, sql, s, t, c, r, image_format)
                 f.write(output)
                 toc = toc + ["* [%s](%s.%s.md)" % (tname, schema, tname)]
@@ -86,7 +105,10 @@ def write_doc(dirname, outdir, schema, all_columns, image_format="svg"):
 
     with open(os.path.join(outdir, "README.md"), "w") as f:
         f.write("# %s\n" % schema)
-        f.write('<embed src="./svg/all_tables.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>\n')
+        if image_format == "svg":
+            f.write('<embed src="./svg/all_tables.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>\n')
+        else:
+            f.write('<img src="./' + image_format + '/all_tables.' + image_format + '" width="80%%"/>\n')
         f.write("\n".join(toc))
 
 
