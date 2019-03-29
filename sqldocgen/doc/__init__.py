@@ -18,11 +18,10 @@ def build_dep(dep_list, dep_schema, dep_view, refs):
     return dep_list
 
 
-def get_markdown(doc, sql, schema, table, columns, refs, image_format="png", dot_dir="."):
-    if image_format == "d3":
-        with open(os.path.join(dot_dir, "%s.%s.dot" % (schema, table)), "r") as f:
-            dot = f.read()
-        image_embed = """
+def get_dot_script(dot_dir, schema_table):
+    with open(os.path.join(dot_dir, "%s.dot" % schema_table), "r") as f:
+        dot = f.read()
+    image_embed = """
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="https://unpkg.com/viz.js@1.8.0/viz.js" type="application/javascript"></script>
 <script src="https://unpkg.com/d3-graphviz@1.4.0/build/d3-graphviz.min.js"></script>
@@ -32,7 +31,12 @@ d3.select("#graph").graphviz()
   .fade(false)
   .renderDot(`%s`);
 </script>""" % dot
+    return image_embed
 
+
+def get_markdown(doc, sql, schema, table, columns, refs, image_format="png", dot_dir="."):
+    if image_format == "d3":
+        image_embed = get_dot_script(dot_dir, schema + "." + table)
     elif image_format == "svg":
         image_embed = '<embed src="./svg/%s.%s.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>' % (schema, table)
     else:
@@ -107,14 +111,18 @@ def write_doc(model_dir, out_dir, schema, all_columns, image_format="svg"):
             toc = toc + ["* [%s](%s.%s.md)" % (tname, schema, tname)]
 
     toc.sort()
+
+    if image_format == "d3":
+        image_embed = get_dot_script(dot_dir, "all_tables")
+    elif image_format == "svg":
+        image_embed = '<embed src="./svg/all_tables.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>'
+    else:
+        image_embed = '<img src="./' + image_format + '/all_tables.' + image_format + '" width="80%%"/>'
+
     with open(os.path.join(out_dir, "README.md"), "w") as f:
         f.write("# %s\n" % schema)
-        if image_format == "svg":
-            f.write('<embed src="./svg/all_tables.svg" width="80%%" type="image/svg+xml" codebase="http://www.savarese.com/software/svgplugin/"></embed>\n')
-        else:
-            f.write('<img src="./' + image_format + '/all_tables.' + image_format + '" width="80%%"/>\n')
+        f.write(image_embed + "\n\n")
         f.write("\n".join(toc))
-
 
     with open(os.path.join(out_dir, "SUMMARY.md"), "w") as f:
         f.write("# Summary\n")

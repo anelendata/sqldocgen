@@ -16,10 +16,10 @@ that affects the business decisions. As in the software development pratice,
 the best place to document is the source code. The code author is more likely
 to leave documents in the source code as the code is authored and modified.
 
-sqldocgen automatically generates SQL View dependency digrams. It also lists
-the columns of the output view. The author of the SQL can also leave a
-description by inserting the SQL comment like `/* Here is the doc. */` before
-the query body in the query file (.sql).
+sqldocgen automatically generates clickable SQL View dependency digrams.
+It also lists the columns of the output view. The author of the SQL can also
+leave a description by inserting the SQL comment like `/* Here is the doc. */`
+before the query body in the query file (.sql).
 
 All it requires is a set of SQL files stored in a directory to run sqldocgen.
 It works nicely with dbt as you can point sqldocgen to the model directory
@@ -108,6 +108,8 @@ Then point your web browser to http://localhost:4000
 
 If you install Graphviz, you can generate the image in svg or png instead of
 d3. Using png also allows you to generate PDF version of the docuemnt.
+
+Note: The diagrams are clickable only with the image formats d3 or svg.
 
 ### Install
 
