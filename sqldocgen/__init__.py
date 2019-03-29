@@ -48,7 +48,8 @@ def main():
     if db == "bigquery":
         if not all([gcp_project_id, gcp_secret_file]):
             raise(Exception("To use BigQuery, set gcp_project_id and gcp_secret_file"))
-        client = bigquery.authenticate(gcp_project_id, gcp_secret_file)
+        credentials = bigquery.authenticate(gcp_secret_file)
+        client = bigquery.get_client(gcp_project_id, credentials)
         tables = bigquery.get_schema_table_column(client, schema)
     else:
         tables = doc.read_columns_from_csv(model_dir, table_schemas)

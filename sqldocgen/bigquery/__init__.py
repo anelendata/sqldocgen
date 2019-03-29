@@ -4,35 +4,27 @@ OAuth
 https://cloud.google.com/bigquery/docs/authentication/end-user-installed
 """
 import os
-from google.cloud import bigquery
-from google_auth_oauthlib import flow
+from google import auth
+from google.cloud import exceptions, bigquery
 
 
 LIST_SCHEMA_TABLE_COL_SQL_FILE = os.path.join(os.path.split(__file__)[0], "schema_table_column.sql")
 
 
-def authenticate(project_id, client_secrets_file):
-    """
-    Uncomment the line below to set the `launch_browser` variable.
+def authenticate_oauth():
+    scopes = ("https://www.googleapis.com/auth/bigquery",
+              "https://www.googleapis.com/auth/cloud-platform",
+              "https://www.googleapis.com/auth/drive")
+    credentials, project_id = auth.default(scopes=scopes)
+    return credentials
 
-    The `launch_browser` boolean variable indicates if a local server is used
-    as the callback URL in the auth flow. A value of `True` is recommended,
-    but a local server does not work if accessing the application remotely,
-    such as over SSH or from a remote Jupyter notebook.
-    """
-    launch_browser = True
-    appflow = flow.InstalledAppFlow.from_client_secrets_file(
-        client_secrets_file,
-        scopes=['https://www.googleapis.com/auth/bigquery'])
 
-    if launch_browser:
-        appflow.run_local_server()
-    else:
-        appflow.run_console()
+def authenticate(client_secrets_file):
+    return authenticate_oauth()
 
-    credentials = appflow.credentials
-    client = bigquery.Client(project=project_id, credentials=credentials)
 
+def get_client(project_id, credentials, location="US"):
+    client = bigquery.Client(project=project_id, credentials=credentials, location=location)
     return client
 
 
@@ -62,6 +54,9 @@ def get_schema_table_column(
 
 
 if __name__ == "__main__":
-    client = authenticate("my_project_id", ".secret/xxxx.apps.googleusercontent.com.json")
+    project_id = "my_project_id"
+    client_secrets_file = ".secret/xxxx.apps.googleusercontent.com.json"
+    credentials = authenticate(client_secrets_file)
+    client = get_client(project_id, credentials)
     all_columns = get_schema_table_column(client, "my_schema")
     print(all_columns)
