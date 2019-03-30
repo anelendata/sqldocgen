@@ -53,9 +53,37 @@ npm install gitbook-cli -g
 
 ## How to run
 
+### Database access
+
+sqldocgen extracts the list of columns from the target tables by accessing the
+database (data warehouse).
+
+#### BigQuery specific prerequisites
+
+Make sure you have the dataset read access to BigQuery.
+
+Install [Google Cloud SDK](https://cloud.google.com/sdk/docs).
+
+Then run this before running sqldocgen:
+
+```
+gcloud auth application-default login
+```
+
+To revoke the access, run:
+
+```
+gcloud auth application-default revoke
+```
+
+Or go to [Security Checkup](https://myaccount.google.com/security-checkup) page and
+expand "Third-party access". Then click on "Remove access" under Google Auth Library.
+
+### sqldocgen command
+
 Example:
 ```
-sqldocgen -o ./doc -s analytics -c bigquery --gcp_project_id sandbox-000000 --gcp_secrets_file path_to/client_secret.json ./models
+sqldocgen -o ./doc -s analytics -c bigquery --gcp_project_id sandbox-000000 ./models
 ```
 
 Here is the full usage description (`sqldocgen -h` to show this help)
@@ -96,16 +124,16 @@ optional arguments:
                         Google Cloud secrets file (.json)
 ```
 
-# BigQuery specific
+### Alternative authentication method for BiqQuery
 
-You will need to specify `--gcp_secrets_file` option to specify the secret file
-when you first authenticate to access BigQuery from sqldocgen.
+Alternatively, you can use OAuth 2.0 client to let sqldocgen access BigQuery.
 
 Please follow
-[Google's OAuth documentation](https://developers.google.com/identity/protocols/OAuth2WebServer#prerequisites)
-to download secrets json file.
+[Create authorization credentials section](https://developers.google.com/identity/protocols/OAuth2WebServer#creatingcred)
+of Google's OAuth documentation to generate the client and download secrets json file.
 
-You do not need to specify this option from the second time until the authentication is revoked.
+In this method, you will need to specify `--gcp_secrets_file` option to specify the secrets json file
+when you first authenticate to access BigQuery from sqldocgen.
 
 ## Viewing the documentation
 

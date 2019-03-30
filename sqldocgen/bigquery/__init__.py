@@ -5,7 +5,7 @@ https://cloud.google.com/bigquery/docs/authentication/end-user-installed
 """
 import os
 from google import auth
-from google.auth.exceptions import RefreshError
+from google.auth.exceptions import RefreshError, DefaultCredentialsError
 from google_auth_oauthlib import flow
 from google.cloud import exceptions, bigquery
 
@@ -16,7 +16,7 @@ scopes = ("https://www.googleapis.com/auth/bigquery",
           "https://www.googleapis.com/auth/drive")
 
 
-def authenticate(project_id, client_secrets_file):
+def appflow_auth(project_id, client_secrets_file):
     """
     Uncomment the line below to set the `launch_browser` variable.
     The `launch_browser` boolean variable indicates if a local server is used
@@ -37,8 +37,15 @@ def authenticate(project_id, client_secrets_file):
     return appflow.credentials
 
 
-def refresh_oauth():
-    credentials, project_id = auth.default(scopes=scopes)
+def gcp_sdk_auth():
+    try:
+        credentials, project_id = auth.default(scopes=scopes)
+    except DefaultCredentialsError as e:
+        print(e)
+        print("Please install GCP SDK and run:")
+        print("    gcloud auth application-default login")
+        print("And try sqldocgen command again.")
+        exit(1)
     return credentials
 
 
@@ -78,9 +85,12 @@ def get_schema_table_column(
 
 if __name__ == "__main__":
     project_id = "my_project_id"
+
     client_secrets_file = ".secret/xxxx.apps.googleusercontent.com.json"
-    credentials = authenticate(project_id, client_secrets_file)
-    # credentials = refresh_oauth()
+    credentials = appflow_auth(project_id, client_secrets_file)
+    # Or you can use sdk auth without client secrets json:
+    # credentials = gcp_sdk_auth()
+
     client = get_client(project_id, credentials)
     all_columns = get_schema_table_column(client, "my_schema")
     print(all_columns)

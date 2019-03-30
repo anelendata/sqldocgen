@@ -70,10 +70,12 @@ def main():
     if column_data_source == "bigquery":
         if not gcp_project_id:
             raise(Exception("To use BigQuery, set gcp_project_id"))
+
         if gcp_secrets_file is not None:
-            credentials = bigquery.authenticate(gcp_project_id, gcp_secrets_file)
+            credentials = bigquery.appflow_auth(gcp_project_id, gcp_secrets_file)
         else:
-            credentials = bigquery.refresh_oauth()
+            credentials = bigquery.gcp_sdk_auth()
+
         client = bigquery.get_client(gcp_project_id, credentials)
         tables = bigquery.get_schema_table_column(client, schema)
     elif column_data_source == "csv":
