@@ -39,7 +39,6 @@ source venv/bin/activate
 2. Install
 
 ```
-pip install -r requirements.txt
 python setup.py install
 ```
 
