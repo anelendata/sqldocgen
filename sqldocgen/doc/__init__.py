@@ -25,9 +25,10 @@ def get_dot_script(dot_dir, schema_table):
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src="https://unpkg.com/viz.js@1.8.0/viz.js" type="application/javascript"></script>
 <script src="https://unpkg.com/d3-graphviz@1.4.0/build/d3-graphviz.min.js"></script>
-<div id="graph" style="text-align: center;"></div>
+<div id="graph"></div>
 <script>
 d3.select("#graph").graphviz()
+  // .zoom(false)
   .fade(false)
   .renderDot(`%s`);
 </script>""" % dot
@@ -86,17 +87,18 @@ def parse_sql_file(path, fname, schema="", all_columns={}):
     return (doc, sql, schema, table, columns, refs)
 
 
-def write_doc(model_dir, out_dir, schema, all_columns, image_format="svg"):
+def write_pages(model_dir, out_dir, schema, all_columns, image_format="d3"):
     model_dirs = os.walk(model_dir)
-    toc = []
+    topics = []
     dot_dir = os.path.join(out_dir, "dot")
     for cdir, dirs, files in model_dirs:
         for fname in files:
+            # Parse the table name from the SQL file name
             if fname[-3:] != "sql":
                 print("Skipping non-sql file: " + fname)
                 continue
-
             tname = fname[0:-4]
+
             try:
                 d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
             except ValueError as e:
@@ -105,13 +107,19 @@ def write_doc(model_dir, out_dir, schema, all_columns, image_format="svg"):
             if not r:
                 print("Not found dependency")
                 continue
+            if s + "." + t not in all_columns.keys():
+                continue
             output = get_markdown(d, sql, s, t, c, r, image_format, dot_dir=dot_dir)
             with open(os.path.join(out_dir, schema + "." + tname + ".md"), "w") as f:
                 f.write(output)
-            toc = toc + ["* [%s](%s.%s.md)" % (tname, schema, tname)]
+            topics = topics + ["* [%s](%s.%s.md)" % (tname, schema, tname)]
 
-    toc.sort()
+    topics.sort()
+    return topics
 
+
+def write_overview(schema, out_dir, topics, image_format="d3"):
+    dot_dir = os.path.join(out_dir, "dot")
     if image_format == "d3":
         image_embed = get_dot_script(dot_dir, "all_tables")
     elif image_format == "svg":
@@ -119,17 +127,24 @@ def write_doc(model_dir, out_dir, schema, all_columns, image_format="svg"):
     else:
         image_embed = '<img src="./' + image_format + '/all_tables.' + image_format + '" width="80%%"/>'
 
+    overview = "# %s\n" % schema + image_embed + "\n\n"
+    overview = overview + "\n".join(topics)
+
     with open(os.path.join(out_dir, "README.md"), "w") as f:
-        f.write("# %s\n" % schema)
-        f.write(image_embed + "\n\n")
-        f.write("\n".join(toc))
-
-    with open(os.path.join(out_dir, "SUMMARY.md"), "w") as f:
-        f.write("# Summary\n")
-        f.write("\n".join(toc))
+        f.write(overview)
 
 
-def make_tree(model_dir, out_dir, schema, all_columns, write_file=True):
+def write_toc(schema, out_dir, topics, append=False):
+    mode = "a" if append else "w"
+
+    toc = "## %s\n\n" % schema
+    toc = toc + "\n".join(topics) + "\n\n"
+
+    with open(os.path.join(out_dir, "SUMMARY.md"), mode) as f:
+        f.write(toc)
+
+
+def make_tree(model_dir, out_dir, schema, write_file=True):
     model_dirs = os.walk(model_dir)
     toc = []
     dep_list = []
@@ -140,7 +155,7 @@ def make_tree(model_dir, out_dir, schema, all_columns, write_file=True):
                 print("Skipping non-sql file: " + fname)
                 continue
             try:
-                d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema, all_columns)
+                d, sql, s, t, c, r = parse_sql_file(cdir, fname, schema)
             except ValueError as e:
                 print(e)
                 continue

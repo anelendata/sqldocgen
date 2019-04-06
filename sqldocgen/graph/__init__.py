@@ -23,16 +23,12 @@ def table_label(schema_table_name, table, style=False, current=None):
         class_name = "normal"
 
     schema_name, table_name = schema_table_name.split(".")
-    if current is None or schema_name == current.split(".")[-2]:
-        name = table_name
-    else:
-        name = schema_table_name
 
     col_list = list(table)
     if len(col_list) > 20:
         col_list = col_list[0:19] + ["..."]
     fields = "".join([field_label([x], style=style) for x in col_list])
-    tok = {"tableName": name, "fields": fields,
+    tok = {"schemaName": schema_name, "tableName": table_name, "fields": fields,
             "table_style": "", "td_style":  "", "font": "", "font_close": ""}
     if style:
         tok["table_style"] = "border='1' cellspacing='0' cellborder='1'"
@@ -43,7 +39,9 @@ def table_label(schema_table_name, table, style=False, current=None):
     else:
         tok["class"] = "class='" + class_name + "'"
     label = """<
-    <table {class} {table_style}><tr><td {td_style}>{font}{tableName}{font_close}</td></tr>
+    <table {class} {table_style}>
+      <tr><td {td_style}>{font}{schemaName}{font_close}</td></tr>
+      <tr><td {td_style}>{font}{tableName}{font_close}</td></tr>
         {fields}
     </table> >""".format(**tok)
     return label
@@ -85,17 +83,20 @@ def add_dependency(keys):
     return '  "{refTableName}" -> "{srcTableName}"'.format(**keys)
 
 
-def build_without_graphviz(schema, tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
-    dot = """// %s %s
-digraph {
-rankdir =LR
-node [shape=none]
-""" % (schema, datetime.now())
-
+def get_active(schema, tables, deps, root, depth_limit=None, add_child=True, limit_to_schema=True):
     root_table_name = None
     if root is None:
-        active_tables = tables.keys()
         active_deps = deps
+        if limit_to_schema:
+            active_tables = set()
+            for key in tables.keys():
+                names = key.split(".")
+                if names[0] == schema:
+                    active_tables.add(key)
+            # also include the tables appear in the dep tree
+            active_tables = list(active_tables.union([e for t in deps for e in t]))
+        else:
+            active_tables = tables.keys()
     else:
         root_table_name = root.split(".")[-1]
         active_tables, active_deps = walk_dep(root, 0, deps, depth_limit)
@@ -104,6 +105,18 @@ node [shape=none]
             active_tables = list(set().union(active_tables, t))
             active_deps = list(set().union(active_deps, d))
 
+    return active_tables, active_deps
+
+
+def build_without_graphviz(schema, tables, deps, root=None, depth_limit=None, link_ext="html", add_child=True):
+    dot = """// %s %s
+digraph {
+rankdir =LR
+node [shape=none]
+""" % (schema, datetime.now())
+
+    active_tables, active_deps = get_active(schema, tables, deps, root, depth_limit, add_child)
+
     for schema_table_name in active_tables:
         table_name = schema_table_name.split(".")[-1]
         table = tables[schema_table_name] if schema_table_name in tables.keys() else {}
@@ -111,10 +124,10 @@ node [shape=none]
         cur_schema, cur_table = schema_table_name.split(".")
         label = table_label(schema_table_name, table, style=True, current=root)
 
-        href = "../" + schema_table_name + "." + link_ext
-        target = "_parent"
 
-        if cur_schema == schema:
+        if True or cur_schema == schema:
+            href = "../" + schema_table_name + "." + link_ext
+            target = "_parent"
             dot = dot + create_table_act(schema_table_name, label, href=href, target=target)
         else:
             dot = dot + create_table_act(schema_table_name, label)
@@ -132,17 +145,7 @@ def build_with_graphviz(schema, tables, deps, root=None, depth_limit=None, link_
     dot.attr(rankdir='LR') #, size='8,5')
     dot.attr('node', shape='none')
 
-    root_table_name = None
-    if root is None:
-        active_tables = tables.keys()
-        active_deps = deps
-    else:
-        root_table_name = root.split(".")[-1]
-        active_tables, active_deps = walk_dep(root, 0, deps, depth_limit)
-        if add_child:
-            t, d = walk_dep(root, 0, deps, depth_limit, reverse=True)
-            active_tables = list(set().union(active_tables, t))
-            active_deps = list(set().union(active_deps, d))
+    active_tables, active_deps = get_active(schema, tables, deps, root, depth_limit, add_child)
 
     for schema_table_name in active_tables:
         table_name = schema_table_name.split(".")[-1]
@@ -187,7 +190,7 @@ def output_source(outdir, filename, dot_source):
         f.write(dot_source)
 
 
-def build_dependency(path, schema, dep_table=None, csv_file="_dependency.csv"):
+def build_dependency(path, schema, tables, dep_table=None, csv_file="_dependency.csv"):
     source_schema_col = 0
     source_table_col = 1
     depend_schema_col = 2
@@ -199,7 +202,8 @@ def build_dependency(path, schema, dep_table=None, csv_file="_dependency.csv"):
             source_schema_table = row[source_schema_col] + "." + row[source_table_col]
             depend_schema_view = row[depend_schema_col] + "." + row[depend_view_col]
 
-            if schema != row[depend_schema_col]:
+            # At least dependant table must be listed in the list of tables from the database
+            if schema != row[depend_schema_col] or not depend_schema_view in tables.keys():
                 continue
 
             deps.add((depend_schema_view, source_schema_table))

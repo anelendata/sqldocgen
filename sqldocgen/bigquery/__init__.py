@@ -56,11 +56,20 @@ def get_client(project_id, credentials, location="US"):
 
 def get_schema_table_column(
         client,
-        schema,
+        schemas,
         schema_col=0, table_col=1, column_col=2,
         location="US"):
     with open(LIST_SCHEMA_TABLE_COL_SQL_FILE, "r") as f:
-        query = f.read().replace("\n", " ") % schema
+        query_chunck = f.read().replace("\n", " ")
+
+    if type(schemas) is str:
+        schemas = [schemas]
+    else:
+        schemas = list(schemas)
+
+    query = query_chunck % schemas[0]
+    for s in schemas[1:]:
+        query = query + "UNION ALL " + query_chunck % s
 
     try:
         query_job = client.query(
