@@ -169,11 +169,24 @@ pip install graphviz
 
 ### Generate PDF
 
-To generate PDF version of gitbook, you need to use `-i png` option when
-you run sqldocgen.
+First, install [Calibre](https://calibre-ebook.com/).
 
-Once sqldocgen completes, follow [here](https://toolchain.gitbook.com/ebook.html)
-to convert the gitbook to PDF.
+For Mac:
+
+```
+brew cask install calibre
+```
+
+To generate PDF version of gitbook, you need to use `-i png -g true` option when
+you run sqldocgen.pdf
+
+Once sqldocgen completes, run the gitbook pdf command to convert the gitbook to PDF.
+
+Example:
+
+```
+gitbook pdf ./doc ./my_doc.pdf
+```
 
 
 ## Reporting bugs and contribution
